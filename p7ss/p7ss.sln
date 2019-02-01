@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.329
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "p7ss-server", "p7ss-server\p7ss-server.csproj", "{B24306FC-156A-4DAB-9683-7BC582226AEB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {99DC549A-D117-4CD3-9F3D-C674C1CAE090}
+	EndGlobalSection
+EndGlobal
