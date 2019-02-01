@@ -3,19 +3,15 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using p7ss_server.Configs;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace p7ss_server
 {
     internal class Core : Main
     {
-        internal static List<BannedSockets> BannedSockets = new List<BannedSockets>();
         internal static readonly MySqlConnection MainDbConnect = new MySqlConnection();
         internal static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false, false);
         internal static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
@@ -24,38 +20,22 @@ namespace p7ss_server
             NullValueHandling = NullValueHandling.Ignore
         };
 
-        internal static void BanSocket(string ip, string type)
+        internal static string GenerateSession(string login)
         {
-            List<BannedSockets> list = BannedSockets.Where(x => x.Ip == ip).ToList();
+            string hash;
 
-            if (list.Count == 0)
+            using (SHA512Managed sha512 = new SHA512Managed())
             {
-                while (true)
-                {
-                    try
-                    {
-                        using (StreamWriter sw = new StreamWriter(Params.BannedSocketsFile))
-                        {
-                            BannedSockets.Add(new BannedSockets
-                            {
-                                Ip = ip,
-                                Date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                                Type = type
-                            });
-
-                            sw.Write(JsonConvert.SerializeObject(BannedSockets, SerializerSettings));
-
-                            Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] IP '" + ip + "' was Banned, reason: " + type);
-                        }
-
-                        break;
-                    }
-                    catch (IOException)
-                    {
-                        Thread.Sleep(100);
-                    }
-                }
+                hash = BitConverter.ToString(
+                    sha512.ComputeHash(
+                        Encoding.UTF8.GetBytes(
+                            "p7ss://" + login + "/" + new Random((int)DateTime.Now.Ticks).Next().ToString()
+                        )
+                    )
+                ).Replace("-", "").ToLower();
             }
+
+            return hash;
         }
 
         internal static void Restart()
@@ -91,12 +71,5 @@ namespace p7ss_server
         {
             Console.WriteLine("Unhandled Exception: " + e.ExceptionObject);
         }
-    }
-
-    internal class BannedSockets
-    {
-        public string Ip;
-        public string Date;
-        public string Type;
     }
 }

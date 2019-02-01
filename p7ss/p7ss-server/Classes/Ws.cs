@@ -3,21 +3,21 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using vtortola.WebSockets;
-using vtortola.WebSockets.Deflate;
 using vtortola.WebSockets.Rfc6455;
 using vtortola.WebSockets.Transports.Tcp;
 using System.Collections.Generic;
+using p7ss_server.Classes.Modules.Auth;
+using p7ss_server.Classes.Modules.Messages;
 
 namespace p7ss_server.Classes
 {
     internal class Ws : Core
     {
-        internal static readonly List<SocketsList> AllSockets = new List<SocketsList>();
+        internal static readonly List<SocketsList> AuthSockets = new List<SocketsList>();
 
         public static async void Open()
         {
@@ -38,11 +38,7 @@ namespace p7ss_server.Classes
                 BufferManager = BufferManager.CreateBufferManager(bufferPoolSize, bufferSize)
             };
 
-            options.Standards.RegisterRfc6455(delegate (WebSocketFactoryRfc6455 factory)
-            {
-                factory.MessageExtensions.RegisterDeflateCompression();
-            });
-
+            options.Standards.RegisterRfc6455(delegate (WebSocketFactoryRfc6455 factory) { });
             options.Transports.ConfigureTcp(delegate (TcpTransport tcp)
             {
                 tcp.BacklogSize = 100;
@@ -62,7 +58,7 @@ namespace p7ss_server.Classes
 
             server.StartAsync().Wait(cancellation.Token);
 
-            Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + " WebSocket Server listening: " + string.Join(", ", Array.ConvertAll(listenEndPoints, e => e.ToString())));
+            Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] WebSocket Server listening: " + string.Join(", ", Array.ConvertAll(listenEndPoints, e => e.ToString())));
 
             await AcceptWebSocketsAsync(server, cancellation.Token);
         }
@@ -70,6 +66,7 @@ namespace p7ss_server.Classes
         private static async Task AcceptWebSocketsAsync(WebSocketListener server, CancellationToken cancellation)
         {
             await Task.Yield();
+
             while (!cancellation.IsCancellationRequested)
             {
                 try
@@ -87,23 +84,10 @@ namespace p7ss_server.Classes
                     }
                     else
                     {
-                        string clientIp = webSocket.HttpRequest.Headers["Hoobes-Client-Ip"];
+                        string clientIp = webSocket.HttpRequest.Headers["CF-Connecting-IP"];
+                        //string clientIp = "127.0.0.1"; // debug
 
-                        if (!string.IsNullOrEmpty(clientIp))
-                        {
-                            if (BannedSockets.Where(x => x.Ip == clientIp).ToList().Count > 0)
-                            {
-                                await webSocket.CloseAsync();
-                            }
-                            else
-                            {
-                                await EchoAllIncomingMessagesAsync(webSocket, clientIp, cancellation);
-                            }
-                        }
-                        else
-                        {
-                            await webSocket.CloseAsync();
-                        }
+                        await EchoAllIncomingMessagesAsync(webSocket, clientIp, cancellation);
                     }
                 }
                 catch (OperationCanceledException)
@@ -129,54 +113,160 @@ namespace p7ss_server.Classes
         {
             try
             {
+                SocketsList thisSocket = null;
+
                 while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
                 {
                     WebSocketMessageReadStream messageRead = await webSocket.ReadMessageAsync(cancellation);
 
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
                     {
-                        StreamReader reader = new StreamReader(messageRead, Utf8NoBom);
-                        string request = await reader.ReadToEndAsync();
+                        string request = await new StreamReader(messageRead, Utf8NoBom).ReadToEndAsync();
+
+                        await webSocket.WriteStringAsync(request, cancellation).ConfigureAwait(false);
 
                         if (!string.IsNullOrEmpty(request))
                         {
-                            await webSocket.WriteStringAsync(request, cancellation).ConfigureAwait(false);
+                            JObject json = JObject.Parse(request);
 
-                            string decrypt = Cryptography.DeCrypt(Convert.FromBase64String(request));
-
-                            if (!string.IsNullOrEmpty(decrypt))
+                            if (json != null && !string.IsNullOrEmpty((string)json["method"]))
                             {
-                                JObject json = JObject.Parse(decrypt);
-                                string response = null;
-
-                                switch ((string)json["method"])
+                                string[] method = json["method"].ToString().Split(new[] { "." }, StringSplitOptions.None);
+                                ResponseJson responseData;
+                                object response = new ResponseJson
                                 {
+                                    Result = false,
+                                    Error_code = 400
+                                };
+
+                                switch (method[0])
+                                {
+                                    case "auth":
+                                        switch (method[1])
+                                        {
+                                            case "checkLogin":
+                                                if (thisSocket == null)
+                                                {
+                                                    response = CheckLogin.Execute(clientIp, json["params"]);
+                                                }
+
+                                                break;
+
+                                            case "signUp":
+                                                if (thisSocket == null)
+                                                {
+                                                    responseData = (ResponseJson)SignUp.Execute(clientIp, json["params"], webSocket);
+
+                                                    if (responseData.Result)
+                                                    {
+                                                        ResponseSignUpBody responseDataBody = (ResponseSignUpBody)responseData.Response;
+
+                                                        thisSocket = new SocketsList
+                                                        {
+                                                            UserId = responseDataBody.User_id,
+                                                            Ip = clientIp,
+                                                            Session = responseDataBody.Session,
+                                                            Ws = webSocket
+                                                        };
+                                                    }
+
+                                                    response = responseData;
+                                                }
+
+                                                break;
+
+                                            case "signIn":
+                                                if (thisSocket == null)
+                                                {
+                                                    responseData = (ResponseJson)SignIn.Execute(clientIp, json["params"], webSocket);
+
+                                                    if (responseData.Result)
+                                                    {
+                                                        ResponseSignInBody responseDataBody = (ResponseSignInBody)responseData.Response;
+
+                                                        thisSocket = new SocketsList
+                                                        {
+                                                            UserId = responseDataBody.User_id,
+                                                            Ip = clientIp,
+                                                            Session = responseDataBody.Session,
+                                                            Ws = webSocket
+                                                        };
+                                                    }
+
+                                                    response = responseData;
+                                                }
+
+                                                break;
+
+                                            case "logOut":
+                                                if (thisSocket != null)
+                                                {
+                                                    thisSocket = null;
+                                                    response = LogOut.Execute(thisSocket);
+                                                }
+
+                                                break;
+
+                                            default:
+                                                response = new ResponseJson
+                                                {
+                                                    Result = false,
+                                                    Error_code = 404
+                                                };
+
+                                                break;
+                                        }
+
+                                        break;
+
+                                    case "messages":
+                                        switch (method[1])
+                                        {
+                                            case "getDialogs":
+                                                response = GetDialogs.Execute();
+
+                                                break;
+
+                                            default:
+                                                response = new ResponseJson
+                                                {
+                                                    Result = false,
+                                                    Error_code = 404
+                                                };
+
+                                                break;
+                                        }
+
+                                        break;
+
                                     default:
-                                        BanSocket(clientIp, "method");
+                                        response = new ResponseJson
+                                        {
+                                            Result = false,
+                                            Error_code = 404
+                                        };
 
                                         break;
                                 }
 
-                                if (response != null)
+                                using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
                                 {
-                                    using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                                    using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                     {
-                                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                                        await sw.WriteAsync(
+                                            JsonConvert.SerializeObject(
+                                                response,
+                                                SerializerSettings
+                                            )
+                                        );
+                                        await sw.FlushAsync();
+
+                                        if ((string)json["method"] == "auth.logOut")
                                         {
-                                            await sw.WriteAsync(
-                                                Convert.ToBase64String(
-                                                    Cryptography.EnCrypt(
-                                                        response
-                                                    )
-                                                )
-                                            );
+                                            await webSocket.CloseAsync();
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                BanSocket(clientIp, "decrypt");
                             }
                         }
                     }
@@ -184,11 +274,11 @@ namespace p7ss_server.Classes
             }
             catch (FormatException)
             {
-                BanSocket(clientIp, "FormatException");
+                await webSocket.CloseAsync();
             }
             catch (JsonReaderException)
             {
-                BanSocket(clientIp, "JsonReaderException");
+                await webSocket.CloseAsync();
             }
             catch (AggregateException)
             {
@@ -201,48 +291,55 @@ namespace p7ss_server.Classes
             catch (Exception e)
             {
                 Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'WebSocket': " + e);
-            }
-            finally
-            {
+
                 await webSocket.CloseAsync();
             }
         }
 
-        internal static async void SendAllMessage(string message)
-        {
-            //List<SocketsList> pairSockets = pair == "@all"
-            //    ? language == "@all"
-            //        ? AllSockets.Where(x => x.Language != "#api").ToList()
-            //        : AllSockets.Where(x => x.Language == language).ToList()
-            //    : AllSockets.Where(x => x.Pair == pair).ToList();
+        //internal static async void SendAllMessage(string message)
+        //{
+        //    List<SocketsList> pairSockets = pair == "@all"
+        //        ? language == "@all"
+        //            ? AllSockets.Where(x => x.Language != "#api").ToList()
+        //            : AllSockets.Where(x => x.Language == language).ToList()
+        //        : AllSockets.Where(x => x.Pair == pair).ToList();
 
-            //if (pairSockets.Count > 0)
-            //{
-            //    foreach (var current in pairSockets.ToList())
-            //    {
-            //        try
-            //        {
-            //            using (WebSocketMessageWriteStream messageWriter = current.Ws.CreateMessageWriter(WebSocketMessageType.Text))
-            //            {
-            //                using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
-            //                {
-            //                    await sw.WriteAsync(message);
-            //                    await sw.FlushAsync();
-            //                }
-            //            }
-            //        }
-            //        catch (Exception)
-            //        {
-            //            AllSockets.Remove(current);
-            //        }
-            //    }
-            //}
-        }
+        //    if (pairSockets.Count > 0)
+        //    {
+        //        foreach (var current in pairSockets.ToList())
+        //        {
+        //            try
+        //            {
+        //                using (WebSocketMessageWriteStream messageWriter = current.Ws.CreateMessageWriter(WebSocketMessageType.Text))
+        //                {
+        //                    using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+        //                    {
+        //                        await sw.WriteAsync(message);
+        //                        await sw.FlushAsync();
+        //                    }
+        //                }
+        //            }
+        //            catch (Exception)
+        //            {
+        //                AllSockets.Remove(current);
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     class SocketsList
     {
+        public int UserId;
         public string Ip;
+        public string Session;
         public WebSocket Ws;
+    }
+
+    internal class ResponseJson
+    {
+        public bool Result;
+        public object Response;
+        public int Error_code;
     }
 }
