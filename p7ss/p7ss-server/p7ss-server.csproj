@@ -108,6 +108,7 @@
     <Compile Include="Classes\Modules\Auth\SignIn.cs" />
     <Compile Include="Classes\Modules\Auth\SignUp.cs" />
     <Compile Include="Classes\Modules\Messages\GetDialogs.cs" />
+    <Compile Include="Classes\Modules\Messages\SendMessage.cs" />
     <Compile Include="Classes\Start.cs" />
     <Compile Include="Classes\Ws.cs" />
     <Compile Include="Configs\Databases.cs" />

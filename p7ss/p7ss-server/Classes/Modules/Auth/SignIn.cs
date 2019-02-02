@@ -16,7 +16,10 @@ namespace p7ss_server.Classes.Modules.Auth
                 Result = false
             };
 
-            using (MySqlConnection connect = new MySqlConnection())
+            if (!string.IsNullOrEmpty((string)data["login"])
+                && !string.IsNullOrEmpty((string)data["tfa_code"])
+                    && data["tfa_code"].ToString().Length == 6
+            )
             {
                 SignInBody dataObject = new SignInBody
                 {
@@ -24,7 +27,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     TfaCode = (string)data["tfa_code"]
                 };
 
-                if (!string.IsNullOrEmpty(dataObject.Login) && !string.IsNullOrEmpty(dataObject.TfaCode))
+                using (MySqlConnection connect = new MySqlConnection())
                 {
                     MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder
                     {
@@ -75,7 +78,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                 responseObject = new ResponseJson
                                 {
                                     Result = true,
-                                    Response = new ResponseSignInBody
+                                    Response = new ResponseSignIn
                                     {
                                         User_id = reader.GetInt32(0),
                                         Session = session,
@@ -88,21 +91,21 @@ namespace p7ss_server.Classes.Modules.Auth
                             }
                             else
                             {
-                                responseObject.Error_code = 303;
+                                responseObject.Response = 303;
                             }
                         }
                     }
                     else
                     {
-                        responseObject.Error_code = 302;
+                        responseObject.Response = 302;
                     }
 
                     reader.Close();
                 }
-                else
-                {
-                    responseObject.Error_code = 301;
-                }
+            }
+            else
+            {
+                responseObject.Response = 301;
             }
 
             return responseObject;
@@ -115,7 +118,7 @@ namespace p7ss_server.Classes.Modules.Auth
         public string TfaCode;
     }
 
-    class ResponseSignInBody
+    internal class ResponseSignIn
     {
         public int User_id;
         public string Session;

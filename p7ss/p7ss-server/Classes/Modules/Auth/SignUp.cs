@@ -17,7 +17,18 @@ namespace p7ss_server.Classes.Modules.Auth
                 Result = false
             };
 
-            using (MySqlConnection connect = new MySqlConnection())
+            if (!string.IsNullOrEmpty((string)data["login"])
+                    && data["login"].ToString().Length >= 5
+                    && data["login"].ToString().Length <= 25
+                && !string.IsNullOrEmpty((string)data["tfa_code"])
+                    && data["tfa_code"].ToString().Length == 6
+                && !string.IsNullOrEmpty((string)data["first_name"])
+                    && data["first_name"].ToString().Length >= 1
+                    && data["first_name"].ToString().Length <= 256
+                && !string.IsNullOrEmpty((string)data["last_name"])
+                    && data["last_name"].ToString().Length >= 1
+                    && data["last_name"].ToString().Length <= 256
+            )
             {
                 SignUpBody dataObject = new SignUpBody
                 {
@@ -27,18 +38,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     LastName = (string)data["last_name"]
                 };
 
-                if (!string.IsNullOrEmpty(dataObject.Login)
-                        && dataObject.Login.Length >= 5
-                        && dataObject.Login.Length <= 25
-                    && !string.IsNullOrEmpty(dataObject.TfaCode)
-                        && dataObject.TfaCode.Length == 6
-                    && !string.IsNullOrEmpty(dataObject.FirstName)
-                        && dataObject.FirstName.Length >= 1
-                        && dataObject.FirstName.Length <= 256
-                    //&& !string.IsNullOrEmpty(dataObject.LastName)
-                        && dataObject.LastName.Length >= 0
-                        && dataObject.LastName.Length <= 256
-                )
+                using (MySqlConnection connect = new MySqlConnection())
                 {
                     MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder
                     {
@@ -96,7 +96,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                     responseObject = new ResponseJson
                                     {
                                         Result = true,
-                                        Response = new ResponseSignUpBody
+                                        Response = new ResponseSignUp
                                         {
                                             User_id = reader.GetInt32(0),
                                             Session = session,
@@ -107,26 +107,26 @@ namespace p7ss_server.Classes.Modules.Auth
                                 }
                                 else
                                 {
-                                    responseObject.Error_code = 304;
+                                    responseObject.Response = 304;
                                 }
                             }
                             else
                             {
-                                responseObject.Error_code = 303;
+                                responseObject.Response = 303;
                             }
                         }
                     }
                     else
                     {
-                        responseObject.Error_code = 302;
+                        responseObject.Response = 302;
                     }
 
                     reader.Close();
                 }
-                else
-                {
-                    responseObject.Error_code = 301;
-                }
+            }
+            else
+            {
+                responseObject.Response = 301;
             }
 
             return responseObject;
@@ -141,7 +141,7 @@ namespace p7ss_server.Classes.Modules.Auth
         public string LastName;
     }
 
-    class ResponseSignUpBody
+    internal class ResponseSignUp
     {
         public int User_id;
         public string Session;
