@@ -19,8 +19,12 @@ namespace p7ss_server.Classes.Modules.Messages
 
             GetDialogsBody dataObject = new GetDialogsBody
             {
-                Offset = !string.IsNullOrEmpty((string)data["offset"]) ? (int)data["offset"] <= 50 ? (int)data["offset"] : 0 : 0,
-                Limit = !string.IsNullOrEmpty((string)data["limit"]) ? (int)data["limit"] <= 50 ? (int)data["limit"] : 50 : 50
+                Offset = !string.IsNullOrEmpty((string)data["offset"])
+                    ? (int)data["offset"] <= 50 ? (int)data["offset"] : 0
+                    : 0,
+                Limit = !string.IsNullOrEmpty((string)data["limit"])
+                    ? (int)data["limit"] <= 50 ? (int)data["limit"] : 50
+                    : 50
             };
 
             using (MySqlConnection connect1 = new MySqlConnection())
@@ -61,12 +65,12 @@ namespace p7ss_server.Classes.Modules.Messages
                         case "users":
                             string[] users = reader1.GetString(2).Split("|".ToCharArray());
                             int recipient = users[1] == thisAuthSocket.UserId.ToString() ? Convert.ToInt32(users[2]) : Convert.ToInt32(users[1]);
-                            ResponseGetDialogs dialog = null;
+                            ResponseGetDialogs peer = null;
                             DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0));
                             
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
                             {
-                                dialog = new ResponseGetDialogs
+                                peer = new ResponseGetDialogs
                                 {
                                     Id = reader1.GetInt32(0)
                                 };
@@ -81,10 +85,10 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                     while (reader2.Read())
                                     {
-                                        dialog.Name = reader2.GetString(1) != null
+                                        peer.Name = reader2.GetString(1) != null
                                             ? reader2.GetString(0) + " " + reader2.GetString(1)
                                             : reader2.GetString(0);
-                                        dialog.Avatar = reader2.GetString(2);
+                                        peer.Avatar = reader2.GetString(2);
                                     }
 
                                     reader2.Close();
@@ -100,7 +104,7 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                         for (var i = json.Count - 1; i >= 0; i--)
                                         {
-                                            if (dialog.Message == null)
+                                            if (peer.Message == null)
                                             {
                                                 bool delete = false;
 
@@ -114,8 +118,8 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                                 if (!delete)
                                                 {
-                                                    dialog.Message = (string)json[i]["text"];
-                                                    dialog.Date = (int)json[i]["date"];
+                                                    peer.Message = (string)json[i]["text"];
+                                                    peer.Date = (int)json[i]["date"];
                                                 }
                                             }
                                             else
@@ -129,9 +133,9 @@ namespace p7ss_server.Classes.Modules.Messages
                                 break;
                             }
 
-                            if (dialog != null)
+                            if (peer != null)
                             {
-                                dialogs.Add(dialog);
+                                dialogs.Add(peer);
                             }
 
                             break;

@@ -19,14 +19,14 @@ namespace p7ss_server.Classes.Modules.Messages
                 Result = false
             };
 
-            if (!string.IsNullOrEmpty((string)data["dialog"])
+            if (!string.IsNullOrEmpty((string)data["peer"])
                 && !string.IsNullOrEmpty((string)data["message"])
                 && data["message"].ToString().Length > 1
             )
             {
                 SendMessageBody dataObject = new SendMessageBody
                 {
-                    Dialog = (int)data["dialog"],
+                    Peer = (int)data["peer"],
                     Message = (string)data["message"]
                 };
 
@@ -46,7 +46,7 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect1.ConnectionString = builder.ConnectionString;
                     connect1.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `id` = '" + dataObject.Dialog + "'", connect1);
+                    MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `id` = '" + dataObject.Peer + "'", connect1);
                     MySqlDataReader reader1 = command.ExecuteReader();
                     string fileName = DateTime.Now.ToString("yyyyMMdd") + ".dat", historyJson = null, type = "users";
                     int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds,
@@ -114,14 +114,14 @@ namespace p7ss_server.Classes.Modules.Messages
                             connect1.ConnectionString = builder.ConnectionString;
                             connect1.Open();
 
-                            command = new MySqlCommand("SELECT `id` FROM `users` WHERE `id` = '" + dataObject.Dialog + "'", connect2);
+                            command = new MySqlCommand("SELECT `id` FROM `users` WHERE `id` = '" + dataObject.Peer + "'", connect2);
                             MySqlDataReader reader2 = command.ExecuteReader();
 
                             if (reader2.HasRows)
                             {
-                                string users = "|" + thisAuthSocket.UserId + "|" + dataObject.Dialog + "|";
+                                string users = "|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|";
                                 command = new MySqlCommand("INSERT INTO `im` (`type`, `users`, `time_add`, `time_update`) VALUES ('" + type + "', '" + users + "', '" + time + "', '" + time + "')", MainDbConnect);
-                                recipient = dataObject.Dialog;
+                                recipient = dataObject.Peer;
 
                                 reader2.Close();
                             }
@@ -176,7 +176,6 @@ namespace p7ss_server.Classes.Modules.Messages
 
                     command.ExecuteNonQuery();
 
-                    newMessage.RandomId = null;
                     newMessage.Hide = null;
 
                     responseObject.Result = true;
@@ -198,7 +197,7 @@ namespace p7ss_server.Classes.Modules.Messages
 
     class SendMessageBody
     {
-        public int Dialog;
+        public int Peer;
         public string Message;
     }
 
@@ -208,7 +207,6 @@ namespace p7ss_server.Classes.Modules.Messages
         public int Sender;
         public string Text;
         public int Date;
-        public object RandomId;
         public JArray Hide;
     }
 

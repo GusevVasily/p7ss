@@ -234,6 +234,11 @@ namespace p7ss_server.Classes
 
                                                     break;
 
+                                                case "getHistory":
+                                                    response = GetHistory.Execute(thisAuthSocket, json["params"]);
+
+                                                    break;
+
                                                 case "sendMessage":
                                                     responseData = (ResponseJson)SendMessage.Execute(thisAuthSocket, json["params"]);
                                                     ResponseSendMessageWs responseDataBody = (ResponseSendMessageWs)responseData.Response;
