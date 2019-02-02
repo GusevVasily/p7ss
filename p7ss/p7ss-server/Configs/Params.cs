@@ -2,6 +2,11 @@
 {
     internal class Params
     {
-        internal const string CertificateFile = "certificates/p7ss.ru.pfx";
+        public const string AvatarsDir = "data/avatars/";
+        public const string ChacheDir = "data/messages/";
+        public const string FilesDir = "data/files/";
+        public const string MessagesDir = "data/messages/";
+
+        public const string CertificateFile = "certificates/p7ss.ru.pfx";
     }
 }

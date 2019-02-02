@@ -113,7 +113,7 @@ namespace p7ss_server.Classes
         {
             try
             {
-                SocketsList thisSocket = null;
+                SocketsList thisAuthSocket = null;
 
                 while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
                 {
@@ -145,7 +145,7 @@ namespace p7ss_server.Classes
                                         switch (method[1])
                                         {
                                             case "checkLogin":
-                                                if (thisSocket == null)
+                                                if (thisAuthSocket == null)
                                                 {
                                                     response = CheckLogin.Execute(clientIp, json["params"]);
                                                 }
@@ -153,7 +153,7 @@ namespace p7ss_server.Classes
                                                 break;
 
                                             case "signUp":
-                                                if (thisSocket == null)
+                                                if (thisAuthSocket == null)
                                                 {
                                                     responseData = (ResponseJson)SignUp.Execute(clientIp, json["params"], webSocket);
 
@@ -161,7 +161,7 @@ namespace p7ss_server.Classes
                                                     {
                                                         ResponseSignUpBody responseDataBody = (ResponseSignUpBody)responseData.Response;
 
-                                                        thisSocket = new SocketsList
+                                                        thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
                                                             Ip = clientIp,
@@ -176,7 +176,7 @@ namespace p7ss_server.Classes
                                                 break;
 
                                             case "signIn":
-                                                if (thisSocket == null)
+                                                if (thisAuthSocket == null)
                                                 {
                                                     responseData = (ResponseJson)SignIn.Execute(clientIp, json["params"], webSocket);
 
@@ -184,7 +184,7 @@ namespace p7ss_server.Classes
                                                     {
                                                         ResponseSignInBody responseDataBody = (ResponseSignInBody)responseData.Response;
 
-                                                        thisSocket = new SocketsList
+                                                        thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
                                                             Ip = clientIp,
@@ -199,10 +199,10 @@ namespace p7ss_server.Classes
                                                 break;
 
                                             case "logOut":
-                                                if (thisSocket != null)
+                                                if (thisAuthSocket != null)
                                                 {
-                                                    thisSocket = null;
-                                                    response = LogOut.Execute(thisSocket);
+                                                    thisAuthSocket = null;
+                                                    response = LogOut.Execute(thisAuthSocket);
                                                 }
 
                                                 break;
@@ -220,21 +220,26 @@ namespace p7ss_server.Classes
                                         break;
 
                                     case "messages":
-                                        switch (method[1])
+                                        if (thisAuthSocket != null)
                                         {
-                                            case "getDialogs":
-                                                response = GetDialogs.Execute();
+                                            switch (method[1])
+                                            {
+                                                case "getDialogs":
+                                                    response = GetDialogs.Execute(thisAuthSocket, json["params"]);
 
-                                                break;
+                                                    break;
 
-                                            default:
-                                                response = new ResponseJson
-                                                {
-                                                    Result = false,
-                                                    Error_code = 404
-                                                };
+                                                default:
+                                                    response = new ResponseJson
+                                                    {
+                                                        Result = false,
+                                                        Error_code = 404
+                                                    };
 
-                                                break;
+                                                    break;
+                                            }
+
+                                            break;
                                         }
 
                                         break;

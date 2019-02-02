@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 using p7ss_server.Configs;
@@ -68,25 +69,21 @@ namespace p7ss_server.Classes.Modules.Auth
                                     int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                     string session = GenerateSession(dataObject.Login);
 
-                                    using (MySqlConnection connect2 = new MySqlConnection())
-                                    {
-                                        connect2.ConnectionString = builder.ConnectionString;
-                                        connect2.Open();
+                                    command = new MySqlCommand(
+                                        "UPDATE `users` SET " +
+                                        "`first_name` = '" + dataObject.FirstName + "'," +
+                                        "`last_name` = '" + dataObject.LastName + "'," +
+                                        "`session` = '" + session + "'," +
+                                        "`activated` = '1'," +
+                                        "`time_auth` = '" + time + "'," +
+                                        "`time_reg` = '" + time + "'," +
+                                        "`ip_reg` = '" + clientIp + "' " +
+                                        "WHERE `login` = '" + dataObject.Login + "'",
+                                        MainDbConnect
+                                    );
+                                    command.ExecuteNonQuery();
 
-                                        command = new MySqlCommand(
-                                            "UPDATE `users` SET " +
-                                            "`first_name` = '" + dataObject.FirstName + "'," +
-                                            "`last_name` = '" + dataObject.LastName + "'," +
-                                            "`session` = '" + session + "'," +
-                                            "`activated` = '1'," +
-                                            "`time_auth` = '" + time + "'," +
-                                            "`time_reg` = '" + time + "'," +
-                                            "`ip_reg` = '" + clientIp + "' " +
-                                            "WHERE `login` = '" + dataObject.Login + "'",
-                                            connect2
-                                        );
-                                        command.ExecuteNonQuery();
-                                    }
+                                    Directory.CreateDirectory(Params.AvatarsDir + reader.GetInt32(0));
 
                                     Ws.AuthSockets.Add(new SocketsList
                                     {

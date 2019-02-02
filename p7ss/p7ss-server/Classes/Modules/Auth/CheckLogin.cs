@@ -59,12 +59,10 @@ namespace p7ss_server.Classes.Modules.Auth
 
                     if (!reader.HasRows)
                     {
-                        reader.Close();
-
                         TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
                         string secret = tfa.CreateSecret(160);
 
-                        command = new MySqlCommand("INSERT INTO `users` (`login`, `first_name`, `last_name`, `avatar`, `status`, `tfa`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '', '" + secret + "', '" + clientIp + "')", connect);
+                        command = new MySqlCommand("INSERT INTO `users` (`login`, `first_name`, `last_name`, `avatar`, `status`, `tfa`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '', '" + secret + "', '" + clientIp + "')", MainDbConnect);
                         command.ExecuteNonQuery();
 
                         responseObject = new ResponseJson
@@ -78,10 +76,10 @@ namespace p7ss_server.Classes.Modules.Auth
                     }
                     else
                     {
-                        reader.Close();
-
                         responseObject.Error_code = 303;
                     }
+
+                    reader.Close();
                 }
                 else
                 {

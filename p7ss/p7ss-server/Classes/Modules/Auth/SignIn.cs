@@ -54,21 +54,15 @@ namespace p7ss_server.Classes.Modules.Auth
                                 int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                 string session = GenerateSession(dataObject.Login);
 
-                                using (MySqlConnection connect2 = new MySqlConnection())
-                                {
-                                    connect2.ConnectionString = builder.ConnectionString;
-                                    connect2.Open();
-
-                                    command = new MySqlCommand(
-                                        "UPDATE `users` SET " +
-                                        "`ip` = '" + clientIp + "'," +
-                                        "`session` = '" + session + "'," +
-                                        "`time_auth` = '" + time + "' " +
-                                        "WHERE `login` = '" + dataObject.Login + "'",
-                                        connect2
-                                    );
-                                    command.ExecuteNonQuery();
-                                }
+                                command = new MySqlCommand(
+                                    "UPDATE `users` SET " +
+                                    "`ip` = '" + clientIp + "'," +
+                                    "`session` = '" + session + "'," +
+                                    "`time_auth` = '" + time + "' " +
+                                    "WHERE `login` = '" + dataObject.Login + "'",
+                                    MainDbConnect
+                                );
+                                command.ExecuteNonQuery();
 
                                 Ws.AuthSockets.Add(new SocketsList
                                 {
