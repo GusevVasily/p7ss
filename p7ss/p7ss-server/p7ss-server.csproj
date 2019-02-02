@@ -104,6 +104,7 @@
   <ItemGroup>
     <Compile Include="Classes\Cryptography.cs" />
     <Compile Include="Classes\Modules\Auth\CheckLogin.cs" />
+    <Compile Include="Classes\Modules\Auth\ImportAuthorization.cs" />
     <Compile Include="Classes\Modules\Auth\LogOut.cs" />
     <Compile Include="Classes\Modules\Auth\SignIn.cs" />
     <Compile Include="Classes\Modules\Auth\SignUp.cs" />

@@ -203,6 +203,29 @@ namespace p7ss_server.Classes
 
                                                 break;
 
+                                            case "importAuthorization":
+                                                if (thisAuthSocket == null)
+                                                {
+                                                    responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, json["params"], webSocket);
+
+                                                    if (responseData.Result)
+                                                    {
+                                                        ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization)responseData.Response;
+
+                                                        thisAuthSocket = new SocketsList
+                                                        {
+                                                            UserId = responseDataBody.User_id,
+                                                            Ip = clientIp,
+                                                            Session = responseDataBody.Session,
+                                                            Ws = webSocket
+                                                        };
+                                                    }
+
+                                                    response = responseData;
+                                                }
+
+                                                break;
+
                                             case "logOut":
                                                 if (thisAuthSocket != null)
                                                 {

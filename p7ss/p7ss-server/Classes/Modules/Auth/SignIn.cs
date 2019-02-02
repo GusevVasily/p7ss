@@ -84,8 +84,8 @@ namespace p7ss_server.Classes.Modules.Auth
                                         Session = session,
                                         First_name = reader.GetString(1),
                                         Last_name = reader.GetString(2),
-                                        Status = reader.GetString(3),
-                                        Avatar = reader.GetString(4)
+                                        Avatar = reader.GetString(3),
+                                        Status = reader.GetString(4)
                                     }
                                 };
                             }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using MySql.Data.MySqlClient;
@@ -30,7 +29,7 @@ namespace p7ss_server.Classes.Modules.Messages
                         : 50
                 };
 
-                using (MySqlConnection connect1 = new MySqlConnection())
+                using (MySqlConnection connect = new MySqlConnection())
                 {
                     MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder
                     {
@@ -43,18 +42,18 @@ namespace p7ss_server.Classes.Modules.Messages
                         SslMode = MySqlSslMode.None
                     };
 
-                    connect1.ConnectionString = builder.ConnectionString;
-                    connect1.Open();
+                    connect.ConnectionString = builder.ConnectionString;
+                    connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `id` = '" + dataObject.Peer + "' AND `users` LIKE '%|" + thisAuthSocket.UserId + "|%'", connect1);
-                    MySqlDataReader reader1 = command.ExecuteReader();
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `id` = '" + dataObject.Peer + "' AND `users` LIKE '%|" + thisAuthSocket.UserId + "|%'", connect);
+                    MySqlDataReader reader = command.ExecuteReader();
 
-                    if (reader1.HasRows)
+                    if (reader.HasRows)
                     {
-                        while (reader1.Read())
+                        while (reader.Read())
                         {
                             List<MessageParamsAdd> messages = new List<MessageParamsAdd>();
-                            DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0));
+                            DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader.GetString(1) + "/" + reader.GetInt32(0));
                             int residue = 0;
 
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
@@ -93,8 +92,11 @@ namespace p7ss_server.Classes.Modules.Messages
                                 }
                             }
 
-                            responseObject.Result = true;
-                            responseObject.Response = messages;
+                            responseObject = new ResponseJson
+                            {
+                                Result = true,
+                                Response = messages
+                            };
                         }
                     }
                     else
@@ -102,7 +104,7 @@ namespace p7ss_server.Classes.Modules.Messages
                         responseObject.Response = 302;
                     }
 
-                    reader1.Close();
+                    reader.Close();
                 }
             }
             else
@@ -119,14 +121,5 @@ namespace p7ss_server.Classes.Modules.Messages
         public int Peer;
         public int Offset;
         public int Limit;
-    }
-
-    class ResponseGetHistory
-    {
-        public int Id;
-        public string Name;
-        public string Avatar;
-        public string Message;
-        public int Date;
     }
 }

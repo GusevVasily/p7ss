@@ -178,11 +178,14 @@ namespace p7ss_server.Classes.Modules.Messages
 
                     newMessage.Hide = null;
 
-                    responseObject.Result = true;
-                    responseObject.Response = new ResponseSendMessageWs
+                    responseObject = new ResponseJson
                     {
-                        Recipient = recipient,
-                        Body = newMessage
+                        Result = true,
+                        Response = new ResponseSendMessageWs
+                        {
+                            Recipient = recipient,
+                            Body = newMessage
+                        }
                     };
                 }
             }
