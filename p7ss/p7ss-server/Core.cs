@@ -40,9 +40,9 @@ namespace p7ss_server
 
         internal static void Restart()
         {
-            Process process = new Process()
+            Process process = new Process
             {
-                StartInfo = new ProcessStartInfo()
+                StartInfo = new ProcessStartInfo
                 {
                     FileName = "/bin/bash",
                     RedirectStandardInput = true,

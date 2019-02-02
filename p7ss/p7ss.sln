@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "p7ss-server", "p7ss-server\p7ss-server.csproj", "{B24306FC-156A-4DAB-9683-7BC582226AEB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "p7ss-client", "p7ss-client\p7ss-client.csproj", "{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B24306FC-156A-4DAB-9683-7BC582226AEB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

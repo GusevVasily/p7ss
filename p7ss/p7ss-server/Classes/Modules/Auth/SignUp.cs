@@ -54,7 +54,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `activated`, `tfa` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `ip` = '" + clientIp + "'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `activated`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `ip` = '" + clientIp + "'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
 
                     if (reader.HasRows)
@@ -96,12 +96,14 @@ namespace p7ss_server.Classes.Modules.Auth
                                     responseObject = new ResponseJson
                                     {
                                         Result = true,
-                                        Response = new ResponseSignUp
+                                        Response = new ResponseAuth
                                         {
                                             User_id = reader.GetInt32(0),
                                             Session = session,
                                             First_name = dataObject.FirstName,
-                                            Last_name = dataObject.LastName
+                                            Last_name = dataObject.LastName,
+                                            Avatar = "",
+                                            Status = ""
                                         }
                                     };
                                 }
@@ -139,13 +141,5 @@ namespace p7ss_server.Classes.Modules.Auth
         public string TfaCode;
         public string FirstName;
         public string LastName;
-    }
-
-    internal class ResponseSignUp
-    {
-        public int User_id;
-        public string Session;
-        public string First_name;
-        public string Last_name;
     }
 }

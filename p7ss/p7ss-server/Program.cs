@@ -7,7 +7,7 @@ namespace p7ss_server
     internal class Program : Core
     {
         [STAThread]
-        static void Main()
+        private static void Main()
         {
             try
             {

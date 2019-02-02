@@ -39,7 +39,7 @@ namespace p7ss_server.Classes
                 BufferManager = BufferManager.CreateBufferManager(bufferPoolSize, bufferSize)
             };
 
-            options.Standards.RegisterRfc6455(delegate { });
+            options.Standards.RegisterRfc6455();
             options.Transports.ConfigureTcp(delegate (TcpTransport tcp)
             {
                 tcp.BacklogSize = 100;
@@ -59,7 +59,7 @@ namespace p7ss_server.Classes
 
             server.StartAsync().Wait(cancellation.Token);
 
-            Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] WebSocket Server listening: " + string.Join(", ", Array.ConvertAll(listenEndPoints, e => e.ToString())));
+            Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] WebSocket Server listening: " + WsDaemon);
 
             await AcceptWebSocketsAsync(server, cancellation.Token);
         }
@@ -87,12 +87,12 @@ namespace p7ss_server.Classes
                     {
                         string clientIp = webSocket.HttpRequest.Headers["CF-Connecting-IP"];
 
-                        using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
-                        {
-                            await sw.WriteAsync(JsonConvert.SerializeObject((int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds, SerializerSettings));
-                            await sw.FlushAsync();
-                        }
+                        //using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                        //using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                        //{
+                        //    await sw.WriteAsync(JsonConvert.SerializeObject((int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds, SerializerSettings));
+                        //    await sw.FlushAsync();
+                        //}
 
 #pragma warning disable 4014
                         EchoAllIncomingMessagesAsync(webSocket, clientIp, cancellation);
@@ -166,7 +166,7 @@ namespace p7ss_server.Classes
 
                                                     if (responseData.Result)
                                                     {
-                                                        ResponseSignUp responseDataBody = (ResponseSignUp)responseData.Response;
+                                                        ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
                                                         thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
@@ -188,7 +188,7 @@ namespace p7ss_server.Classes
 
                                                     if (responseData.Result)
                                                     {
-                                                        ResponseSignIn responseDataBody = (ResponseSignIn)responseData.Response;
+                                                        ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
                                                         thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
@@ -401,5 +401,15 @@ namespace p7ss_server.Classes
     {
         public bool Result;
         public object Response;
+    }
+
+    internal class ResponseAuth
+    {
+        public int User_id;
+        public string Session;
+        public string First_name;
+        public string Last_name;
+        public string Avatar;
+        public string Status;
     }
 }

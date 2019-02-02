@@ -43,7 +43,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `first_name`, `last_name`, `avatar`, `status`, `tfa` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `first_name`, `last_name`, `avatar`, `status`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
 
                     if (reader.HasRows)
@@ -78,7 +78,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                 responseObject = new ResponseJson
                                 {
                                     Result = true,
-                                    Response = new ResponseSignIn
+                                    Response = new ResponseAuth
                                     {
                                         User_id = reader.GetInt32(0),
                                         Session = session,
@@ -116,15 +116,5 @@ namespace p7ss_server.Classes.Modules.Auth
     {
         public string Login;
         public string TfaCode;
-    }
-
-    internal class ResponseSignIn
-    {
-        public int User_id;
-        public string Session;
-        public string First_name;
-        public string Last_name;
-        public string Avatar;
-        public string Status;
     }
 }

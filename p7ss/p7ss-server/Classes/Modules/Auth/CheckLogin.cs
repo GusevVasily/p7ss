@@ -21,18 +21,18 @@ namespace p7ss_server.Classes.Modules.Auth
             };
 
             if (!string.IsNullOrEmpty(dataObject.Login)
-                    && dataObject.Login.Length >= 5
-                    && dataObject.Login.Length <= 32
+                && dataObject.Login.Length >= 5
+                && dataObject.Login.Length <= 32
             )
             {
                 using (MySqlConnection connect = new MySqlConnection())
                 {
                     string login = dataObject.Login.ToLower();
-                    string[] symbols = { "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "_" };
+                    string symbols = "abcdefghijklmnopqrstuvwxz01234567890_";
 
                     for (var i = 0; i < dataObject.Login.Length; i++)
                     {
-                        if (Array.IndexOf(symbols, login[i]) == 0)
+                        if (symbols.IndexOf(login[i]) == -1)
                         {
                             responseObject.Response = 302;
 
@@ -54,30 +54,40 @@ namespace p7ss_server.Classes.Modules.Auth
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `activated` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `activated` FROM `users` WHERE `login` = '" + dataObject.Login + "'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
+                    TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
+                    string secret = tfa.CreateSecret(160);
 
-                    if (!reader.HasRows)
+                    if (reader.HasRows)
                     {
-                        TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
-                        string secret = tfa.CreateSecret(160);
-
-                        command = new MySqlCommand("INSERT INTO `users` (`login`, `first_name`, `last_name`, `avatar`, `status`, `tfa`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '', '" + secret + "', '" + clientIp + "')", MainDbConnect);
-                        command.ExecuteNonQuery();
-
-                        responseObject = new ResponseJson
+                        while (reader.Read())
                         {
-                            Result = true,
-                            Response = new ResponseCheckLogin
+                            if (reader.GetInt32(0) != 0)
                             {
-                                Tfa_secret = secret
+                                responseObject.Response = 304;
+
+                                return responseObject;
                             }
-                        };
+                        }
+
+                        command = new MySqlCommand("UPDATE `users` SET `tfa_secret` = '" + secret + "' WHERE `login` = '" + dataObject.Login + "'", MainDbConnect);
                     }
                     else
                     {
-                        responseObject.Response = 303;
+                        command = new MySqlCommand("INSERT INTO `users` (`login`, `first_name`, `last_name`, `avatar`, `status`, `tfa_secret`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '', '" + secret + "', '" + clientIp + "')", MainDbConnect);
                     }
+
+                    command.ExecuteNonQuery();
+
+                    responseObject = new ResponseJson
+                    {
+                        Result = true,
+                        Response = new ResponseCheckLogin
+                        {
+                            Tfa_secret = secret
+                        }
+                    };
 
                     reader.Close();
                 }
