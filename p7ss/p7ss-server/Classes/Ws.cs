@@ -22,12 +22,11 @@ namespace p7ss_server.Classes
 
         public static async void Open()
         {
+            X509Certificate2 certificate = new X509Certificate2(File.ReadAllBytes(Params.CertificateFile), PfxCertificatePassword);
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             CancellationTokenSource cancellation = new CancellationTokenSource();
-
             Console.CancelKeyPress += (a, b) => cancellation.Cancel();
-
             int bufferSize = 8192;
             int bufferPoolSize = 100 * bufferSize;
             WebSocketListenerOptions options = new WebSocketListenerOptions
@@ -46,8 +45,6 @@ namespace p7ss_server.Classes
                 tcp.ReceiveBufferSize = bufferSize;
                 tcp.SendBufferSize = bufferSize;
             });
-
-            X509Certificate2 certificate = new X509Certificate2(File.ReadAllBytes(Params.CertificateFile), PfxCertificatePassword);
 
             options.ConnectionExtensions.RegisterSecureConnection(certificate);
 
@@ -73,7 +70,6 @@ namespace p7ss_server.Classes
                 try
                 {
                     WebSocket webSocket = await server.AcceptWebSocketAsync(cancellation).ConfigureAwait(false);
-
                     if (webSocket == null)
                     {
                         if (cancellation.IsCancellationRequested || !server.IsStarted)
@@ -131,18 +127,19 @@ namespace p7ss_server.Classes
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
                     {
                         string request = await new StreamReader(messageRead, Utf8NoBom).ReadToEndAsync();
-
                         if (!string.IsNullOrEmpty(request))
                         {
                             JObject json = JObject.Parse(request);
-
-                            if (json != null && !string.IsNullOrEmpty((string)json["method"]))
+                            Console.WriteLine(request); // debug
+                            if (json != null && !string.IsNullOrEmpty((string) json["method"]))
                             {
                                 string[] method = json["method"].ToString().Split(".".ToCharArray());
+                                int requestId = json["id"] != null ? (int) json["id"] : 0;
                                 ResponseJson responseData;
                                 object response = new ResponseJson
                                 {
                                     Result = false,
+                                    Id = json["id"] != null ? (int)json["id"] : 0,
                                     Response = 400
                                 };
 
@@ -154,7 +151,7 @@ namespace p7ss_server.Classes
                                             case "checkLogin":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    response = CheckLogin.Execute(clientIp, json["params"]);
+                                                    response = CheckLogin.Execute(clientIp, requestId, json["params"]);
                                                 }
 
                                                 break;
@@ -162,8 +159,7 @@ namespace p7ss_server.Classes
                                             case "signUp":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    responseData = (ResponseJson)SignUp.Execute(clientIp, json["params"], webSocket);
-
+                                                    responseData = (ResponseJson)SignUp.Execute(clientIp, requestId, json["params"], webSocket);
                                                     if (responseData.Result)
                                                     {
                                                         ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
@@ -184,8 +180,7 @@ namespace p7ss_server.Classes
                                             case "signIn":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    responseData = (ResponseJson)SignIn.Execute(clientIp, json["params"], webSocket);
-
+                                                    responseData = (ResponseJson)SignIn.Execute(clientIp, requestId, json["params"], webSocket);
                                                     if (responseData.Result)
                                                     {
                                                         ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
@@ -206,12 +201,10 @@ namespace p7ss_server.Classes
                                             case "importAuthorization":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, json["params"], webSocket);
-
+                                                    responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, requestId, json["params"], webSocket);
                                                     if (responseData.Result)
                                                     {
                                                         ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization)responseData.Response;
-
                                                         thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
@@ -229,7 +222,7 @@ namespace p7ss_server.Classes
                                             case "logOut":
                                                 if (thisAuthSocket != null)
                                                 {
-                                                    response = LogOut.Execute(thisAuthSocket);
+                                                    response = LogOut.Execute(thisAuthSocket, requestId);
                                                     thisAuthSocket = null;
                                                 }
 
@@ -253,26 +246,24 @@ namespace p7ss_server.Classes
                                             switch (method[1])
                                             {
                                                 case "getDialogs":
-                                                    response = GetDialogs.Execute(thisAuthSocket, json["params"]);
+                                                    response = GetDialogs.Execute(thisAuthSocket, requestId, json["params"]);
 
                                                     break;
 
                                                 case "getHistory":
-                                                    response = GetHistory.Execute(thisAuthSocket, json["params"]);
+                                                    response = GetHistory.Execute(thisAuthSocket, requestId, json["params"]);
 
                                                     break;
 
                                                 case "sendMessage":
-                                                    responseData = (ResponseJson)SendMessage.Execute(thisAuthSocket, json["params"]);
-                                                    ResponseSendMessageWs responseDataBody = (ResponseSendMessageWs)responseData.Response;
-
+                                                    responseData = (ResponseJson)SendMessage.Execute(thisAuthSocket, requestId, json["params"]);
                                                     if (responseData.Result)
                                                     {
+                                                        ResponseSendMessageWs responseDataBody = (ResponseSendMessageWs)responseData.Response;
                                                         List<SocketsList> twoSocket = AuthSockets.Where(x => x.UserId == responseDataBody.Recipient).ToList();
-
                                                         if (twoSocket.Count > 0)
                                                         {
-                                                            using (WebSocketMessageWriteStream messageWriter = twoSocket.Last().Ws.CreateMessageWriter(WebSocketMessageType.Text))
+                                                            using (WebSocketMessageWriteStream messageWriter =twoSocket.Last().Ws.CreateMessageWriter(WebSocketMessageType.Text))
                                                             using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                                             {
                                                                 AuthSocketSend userMessage = new AuthSocketSend
@@ -286,15 +277,15 @@ namespace p7ss_server.Classes
                                                                 await sw.FlushAsync();
                                                             }
                                                         }
+
+                                                        responseData.Response = new ResponseSendMessage
+                                                        {
+                                                            Id = responseDataBody.Body.Id,
+                                                            Date = responseDataBody.Body.Date
+                                                        };
+
+                                                        response = responseData;
                                                     }
-
-                                                    responseData.Response = new ResponseSendMessage
-                                                    {
-                                                        Id = responseDataBody.Body.Id,
-                                                        Date = responseDataBody.Body.Date
-                                                    };
-
-                                                    response = responseData;
 
                                                     break;
 
@@ -302,6 +293,7 @@ namespace p7ss_server.Classes
                                                     response = new ResponseJson
                                                     {
                                                         Result = false,
+                                                        Id = requestId,
                                                         Response = 404
                                                     };
 
@@ -315,10 +307,16 @@ namespace p7ss_server.Classes
                                         response = new ResponseJson
                                         {
                                             Result = false,
+                                            Id = requestId,
                                             Response = 404
                                         };
 
                                         break;
+                                }
+
+                                if (thisAuthSocket != null)
+                                {
+                                    Console.WriteLine(thisAuthSocket.UserId + ": " + webSocket.IsConnected); // debug
                                 }
 
                                 using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
@@ -332,7 +330,7 @@ namespace p7ss_server.Classes
                                     );
                                     await sw.FlushAsync();
 
-                                    if ((string)json["method"] == "auth.logOut")
+                                    if ((string) json["method"] == "auth.logOut")
                                     {
                                         await webSocket.CloseAsync();
                                     }
@@ -353,6 +351,18 @@ namespace p7ss_server.Classes
             }
             catch (JsonReaderException)
             {
+                if (thisAuthSocket != null)
+                {
+                    LogOut.Execute(thisAuthSocket);
+                }
+
+                await webSocket.CloseAsync();
+            }
+            catch (WebSocketException e)
+            {
+                Console.WriteLine("userid: " + thisAuthSocket.UserId);
+                Console.WriteLine();
+                Console.WriteLine(e);
                 if (thisAuthSocket != null)
                 {
                     LogOut.Execute(thisAuthSocket);
@@ -400,6 +410,7 @@ namespace p7ss_server.Classes
     internal class ResponseJson
     {
         public bool Result;
+        public int Id;
         public object Response;
     }
 
@@ -407,8 +418,7 @@ namespace p7ss_server.Classes
     {
         public int User_id;
         public string Session;
-        public string First_name;
-        public string Last_name;
+        public string Name;
         public string Avatar;
         public string Status;
     }

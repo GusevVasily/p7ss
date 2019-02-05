@@ -1,5 +1,4 @@
-﻿using System;
-using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 using p7ss_server.Configs;
 using TwoFactorAuthNet;
@@ -8,11 +7,12 @@ namespace p7ss_server.Classes.Modules.Auth
 {
     internal class CheckLogin : Core
     {
-        internal static object Execute(string clientIp, JToken data)
+        internal static object Execute(string clientIp, int requestId, JToken data)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             CheckLoginBody dataObject = new CheckLoginBody
@@ -28,9 +28,9 @@ namespace p7ss_server.Classes.Modules.Auth
                 using (MySqlConnection connect = new MySqlConnection())
                 {
                     string login = dataObject.Login.ToLower();
-                    string symbols = "abcdefghijklmnopqrstuvwxz01234567890_";
+                    string symbols = "abcdefghijklmnopqrstuvwxyz01234567890_";
 
-                    for (var i = 0; i < dataObject.Login.Length; i++)
+                    for (var i = 0; i < login.Length; i++)
                     {
                         if (symbols.IndexOf(login[i]) == -1)
                         {
@@ -71,18 +71,17 @@ namespace p7ss_server.Classes.Modules.Auth
                             }
                         }
 
-                        command = new MySqlCommand("UPDATE `users` SET `tfa_secret` = '" + secret + "' WHERE `login` = '" + dataObject.Login + "'", MainDbConnect);
+                        MainDbSend("UPDATE `users` SET `tfa_secret` = '" + secret + "' WHERE `login` = '" + dataObject.Login + "'");
                     }
                     else
                     {
-                        command = new MySqlCommand("INSERT INTO `users` (`login`, `first_name`, `last_name`, `avatar`, `status`, `tfa_secret`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '', '" + secret + "', '" + clientIp + "')", MainDbConnect);
+                        MainDbSend("INSERT INTO `users` (`login`, `name`, `avatar`, `status`, `tfa_secret`, `ip`) VALUES ('" + dataObject.Login + "', '', '', '', '" + secret + "', '" + clientIp + "')");
                     }
-
-                    command.ExecuteNonQuery();
 
                     responseObject = new ResponseJson
                     {
                         Result = true,
+                        Id = requestId,
                         Response = new ResponseCheckLogin
                         {
                             Tfa_secret = secret

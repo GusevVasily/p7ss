@@ -56,8 +56,8 @@
     <Compile Include="Core.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WebSockets\Local.cs" />
-    <Compile Include="WebSockets\Remote.cs" />
+    <Compile Include="Classes\WebSockets\Local.cs" />
+    <Compile Include="Classes\WebSockets\Remote.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

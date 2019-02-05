@@ -38,6 +38,25 @@ namespace p7ss_server
             return hash;
         }
 
+        internal static void MainDbSend(string sql)
+        {
+            while (true)
+            {
+                try
+                {
+                    MySqlCommand mySqlCommand = new MySqlCommand(sql, MainDbConnect);
+
+                    mySqlCommand.ExecuteNonQuery();
+
+                    break;
+                }
+                catch (MySqlException)
+                {
+                    MainDbConnect.Open();
+                }
+            }
+        }
+
         internal static void Restart()
         {
             Process process = new Process

@@ -10,11 +10,12 @@ namespace p7ss_server.Classes.Modules.Auth
 {
     internal class SignUp : Core
     {
-        internal static object Execute(string clientIp, JToken data, WebSocket socket)
+        internal static object Execute(string clientIp, int requestId, JToken data, WebSocket socket)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             if (!string.IsNullOrEmpty((string)data["login"])
@@ -22,20 +23,16 @@ namespace p7ss_server.Classes.Modules.Auth
                     && data["login"].ToString().Length <= 25
                 && !string.IsNullOrEmpty((string)data["tfa_code"])
                     && data["tfa_code"].ToString().Length == 6
-                && !string.IsNullOrEmpty((string)data["first_name"])
-                    && data["first_name"].ToString().Length >= 1
-                    && data["first_name"].ToString().Length <= 256
-                && !string.IsNullOrEmpty((string)data["last_name"])
-                    && data["last_name"].ToString().Length >= 1
-                    && data["last_name"].ToString().Length <= 256
+                && !string.IsNullOrEmpty((string)data["name"])
+                    && data["name"].ToString().Length >= 1
+                    && data["name"].ToString().Length <= 256
             )
             {
                 SignUpBody dataObject = new SignUpBody
                 {
                     Login = (string)data["login"],
                     TfaCode = (string)data["tfa_code"],
-                    FirstName = (string)data["first_name"],
-                    LastName = (string)data["last_name"]
+                    Name = (string)data["name"]
                 };
 
                 using (MySqlConnection connect = new MySqlConnection())
@@ -64,24 +61,21 @@ namespace p7ss_server.Classes.Modules.Auth
                             if (reader.GetInt32(1) == 0)
                             {
                                 TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
-                                if (tfa.VerifyCode(reader.GetString(2), dataObject.TfaCode))
+
+                                //if (tfa.VerifyCode(reader.GetString(2), dataObject.TfaCode))
+                                if (true) // debug
                                 {
                                     int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                     string session = GenerateSession(dataObject.Login);
 
-                                    command = new MySqlCommand(
-                                        "UPDATE `users` SET " +
-                                        "`first_name` = '" + dataObject.FirstName + "'," +
-                                        "`last_name` = '" + dataObject.LastName + "'," +
-                                        "`session` = '" + session + "'," +
-                                        "`activated` = '1'," +
-                                        "`time_auth` = '" + time + "'," +
-                                        "`time_reg` = '" + time + "'," +
-                                        "`ip_reg` = '" + clientIp + "' " +
-                                        "WHERE `login` = '" + dataObject.Login + "'",
-                                        MainDbConnect
-                                    );
-                                    command.ExecuteNonQuery();
+                                    MainDbSend("UPDATE `users` SET " +
+                                               "`name` = '" + dataObject.Name + "'," +
+                                               "`session` = '" + session + "'," +
+                                               "`activated` = '1'," +
+                                               "`time_auth` = '" + time + "'," +
+                                               "`time_reg` = '" + time + "'," +
+                                               "`ip_reg` = '" + clientIp + "' " +
+                                               "WHERE `login` = '" + dataObject.Login + "'");
 
                                     Directory.CreateDirectory(Params.AvatarsDir + reader.GetInt32(0));
 
@@ -96,12 +90,12 @@ namespace p7ss_server.Classes.Modules.Auth
                                     responseObject = new ResponseJson
                                     {
                                         Result = true,
+                                        Id = requestId,
                                         Response = new ResponseAuth
                                         {
                                             User_id = reader.GetInt32(0),
                                             Session = session,
-                                            First_name = dataObject.FirstName,
-                                            Last_name = dataObject.LastName,
+                                            Name = dataObject.Name,
                                             Avatar = "",
                                             Status = ""
                                         }
@@ -139,7 +133,6 @@ namespace p7ss_server.Classes.Modules.Auth
     {
         public string Login;
         public string TfaCode;
-        public string FirstName;
-        public string LastName;
+        public string Name;
     }
 }

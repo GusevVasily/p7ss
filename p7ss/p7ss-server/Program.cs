@@ -72,10 +72,9 @@ namespace p7ss_server
             }
             catch (Exception e)
             {
-                Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'Program': " + e);
-
                 MainDbConnect.Close();
 
+                Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'Program': " + e);
                 Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Error... Aborted.");
 
                 Thread.Sleep(5000);

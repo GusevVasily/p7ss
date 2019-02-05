@@ -1,6 +1,5 @@
-﻿using System;
-using System.Threading;
-using p7ss_client.WebSockets;
+﻿using System.Threading;
+using p7ss_client.Classes.WebSockets;
 
 namespace p7ss_client
 {
@@ -17,7 +16,21 @@ namespace p7ss_client
 
             while (true)
             {
-                Console.ReadLine();
+                Thread.Sleep(30000);
+
+                if (!Remote.RemoteSocket.IsConnected)
+                {
+                    RemoteWsDaemon.Abort();
+
+                    RemoteWsDaemon = new Thread(Remote.Open)
+                    {
+                        IsBackground = true
+                    };
+
+                    RemoteWsDaemon.Start();
+
+                    CheckRemoteSocket();
+                }
             }
         }
     }

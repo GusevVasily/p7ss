@@ -12,11 +12,12 @@ namespace p7ss_server.Classes.Modules.Messages
 {
     internal class SendMessage : Core
     {
-        internal static object Execute(SocketsList thisAuthSocket, JToken data)
+        internal static object Execute(SocketsList thisAuthSocket, int requestId, JToken data)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             if (!string.IsNullOrEmpty((string)data["peer"])
@@ -46,106 +47,104 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect1.ConnectionString = builder.ConnectionString;
                     connect1.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `id` = '" + dataObject.Peer + "'", connect1);
+                    MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect1);
                     MySqlDataReader reader1 = command.ExecuteReader();
-                    string fileName = DateTime.Now.ToString("yyyyMMdd") + ".dat", historyJson = null, type = "users";
+                    string fileName = DateTime.Now.ToString("yyyyMMdd") + ".dat",
+                        historyJson = null,
+                        type = "users";
                     int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds,
                         recipient = 0,
-                        id = 1;
-
+                        messageId = 1,
+                        imDir = 0;
                     if (reader1.HasRows)
                     {
                         while (reader1.Read())
                         {
-                            if (reader1.GetString(2).Contains("|" + thisAuthSocket.UserId + "|"))
+                            imDir = reader1.GetInt32(0);
+                            type = reader1.GetString(1);
+
+                            switch (type)
                             {
-                                type = reader1.GetString(1);
+                                case "channels":
+                                    // TODO
 
-                                switch (type)
-                                {
-                                    case "channels":
-                                        // TODO
+                                    break;
 
-                                        break;
+                                case "chats":
+                                    // TODO
 
-                                    case "chats":
-                                        // TODO
+                                    break;
 
-                                        break;
-
-                                    case "users":
-                                        string[] users = reader1.GetString(2).Split("|".ToCharArray());
-                                        recipient = users[1] == thisAuthSocket.UserId.ToString()
-                                            ? Convert.ToInt32(users[2])
-                                            : Convert.ToInt32(users[1]);
-                                        DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0));
-
-                                        foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
+                                case "users":
+                                    string[] users = reader1.GetString(2).Split("|".ToCharArray());
+                                    recipient = users[1] == thisAuthSocket.UserId.ToString() ? Convert.ToInt32(users[2]) : Convert.ToInt32(users[1]);
+                                    DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + imDir);
+                                    foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
+                                    {
+                                        using (StreamReader sr = new StreamReader(file.ToString()))
                                         {
-                                            using (StreamReader sr = new StreamReader(file.ToString()))
-                                            {
-                                                historyJson = sr.ReadToEnd();
-
-                                                JArray history = JArray.Parse(historyJson);
-
-                                                id = (int)history[history.Count - 1]["id"] + 1;
-                                            }
-
-                                            break;
+                                            historyJson = sr.ReadToEnd();
                                         }
 
-                                        break;
-                                }
-                            }
-                            else
-                            {
-                                responseObject.Response = 302;
+                                        JArray history = JArray.Parse(historyJson);
+                                        messageId = (int)history[history.Count - 1]["id"] + 1;
 
-                                return responseObject;
+                                        break;
+                                    }
+
+                                    break;
                             }
+
+                            MainDbSend("UPDATE `im` SET `time_update` = '" + time + "' WHERE `id` = '" + reader1.GetInt32(0) + "'");
                         }
 
-                        command = new MySqlCommand("UPDATE `im` SET `time_update` = '" + time + "' WHERE `id` = '" + reader1.GetInt32(0) + "'", MainDbConnect);
+                        reader1.Close();
                     }
                     else
                     {
                         using (MySqlConnection connect2 = new MySqlConnection())
                         {
-                            connect1.ConnectionString = builder.ConnectionString;
-                            connect1.Open();
+                            connect2.ConnectionString = builder.ConnectionString;
+                            connect2.Open();
 
                             command = new MySqlCommand("SELECT `id` FROM `users` WHERE `id` = '" + dataObject.Peer + "'", connect2);
                             MySqlDataReader reader2 = command.ExecuteReader();
-
-                            if (reader2.HasRows)
+                            if (!reader2.HasRows)
                             {
-                                string users = "|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|";
-                                command = new MySqlCommand("INSERT INTO `im` (`type`, `users`, `time_add`, `time_update`) VALUES ('" + type + "', '" + users + "', '" + time + "', '" + time + "')", MainDbConnect);
-                                recipient = dataObject.Peer;
-
-                                reader2.Close();
-                            }
-                            else
-                            {
-                                reader2.Close();
-
                                 responseObject.Response = 303;
 
                                 return responseObject;
                             }
+
+                            string users = "|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|";
+                            recipient = dataObject.Peer;
+
+                            MainDbSend("INSERT INTO `im` (`type`, `users`, `time_add`, `time_update`) VALUES ('" + type + "', '" + users + "', '" + time + "', '" + time + "')");
+                            reader2.Close();
+
+                            command = new MySqlCommand("SELECT `id` FROM `im` WHERE `users` = '" + users + "'", connect2);
+                            reader2 = command.ExecuteReader();
+                            while (reader2.Read())
+                            {
+                                imDir = reader2.GetInt32(0);
+
+                                Directory.CreateDirectory(Params.MessagesDir + type + "/" + imDir);
+                            }
+
+                            reader2.Close();
                         }
                     }
 
                     MessageParamsAdd newMessage = new MessageParamsAdd
                     {
-                        Id = id,
+                        Id = messageId,
                         Sender = thisAuthSocket.UserId,
                         Text = dataObject.Message,
                         Date = time,
                         Hide = new JArray()
                     };
 
-                    using (StreamWriter sw = new StreamWriter(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0) + "/" + fileName))
+                    using (StreamWriter sw = new StreamWriter(Params.MessagesDir + type + "/" + imDir + "/" + fileName))
                     {
                         while (true)
                         {
@@ -172,15 +171,11 @@ namespace p7ss_server.Classes.Modules.Messages
                         }
                     }
 
-                    reader1.Close();
-
-                    command.ExecuteNonQuery();
-
                     newMessage.Hide = null;
-
                     responseObject = new ResponseJson
                     {
                         Result = true,
+                        Id = requestId,
                         Response = new ResponseSendMessageWs
                         {
                             Recipient = recipient,

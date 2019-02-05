@@ -9,11 +9,12 @@ namespace p7ss_server.Classes.Modules.Messages
 {
     internal class GetHistory : Core
     {
-        internal static object Execute(SocketsList thisAuthSocket, JToken data)
+        internal static object Execute(SocketsList thisAuthSocket, int requestId, JToken data)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             if (!string.IsNullOrEmpty((string)data["peer"]))
@@ -47,7 +48,6 @@ namespace p7ss_server.Classes.Modules.Messages
 
                     MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `id` = '" + dataObject.Peer + "' AND `users` LIKE '%|" + thisAuthSocket.UserId + "|%'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
-
                     if (reader.HasRows)
                     {
                         while (reader.Read())
@@ -55,13 +55,11 @@ namespace p7ss_server.Classes.Modules.Messages
                             List<MessageParamsAdd> messages = new List<MessageParamsAdd>();
                             DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader.GetString(1) + "/" + reader.GetInt32(0));
                             int residue = 0;
-
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
                             {
                                 using (StreamReader sr = new StreamReader(file.ToString()))
                                 {
                                     JArray messagesInFile = JArray.Parse(sr.ReadToEnd());
-
                                     if (dataObject.Offset > 0)
                                     {
                                         if (dataObject.Offset >= messagesInFile.Count)

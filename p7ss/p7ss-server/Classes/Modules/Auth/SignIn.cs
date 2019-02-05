@@ -9,11 +9,12 @@ namespace p7ss_server.Classes.Modules.Auth
 {
     internal class SignIn : Core
     {
-        internal static object Execute(string clientIp, JToken data, WebSocket socket)
+        internal static object Execute(string clientIp, int requestId, JToken data, WebSocket socket)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             if (!string.IsNullOrEmpty((string)data["login"])
@@ -43,7 +44,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `first_name`, `last_name`, `avatar`, `status`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `name`, `avatar`, `status`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
 
                     if (reader.HasRows)
@@ -52,20 +53,17 @@ namespace p7ss_server.Classes.Modules.Auth
                         {
                             TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
 
-                            if (tfa.VerifyCode(reader.GetString(5), dataObject.TfaCode))
+                            //if (tfa.VerifyCode(reader.GetString(4), dataObject.TfaCode))
+                            if (true) // debug
                             {
                                 int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                 string session = GenerateSession(dataObject.Login);
 
-                                command = new MySqlCommand(
-                                    "UPDATE `users` SET " +
-                                    "`ip` = '" + clientIp + "'," +
-                                    "`session` = '" + session + "'," +
-                                    "`time_auth` = '" + time + "' " +
-                                    "WHERE `login` = '" + dataObject.Login + "'",
-                                    MainDbConnect
-                                );
-                                command.ExecuteNonQuery();
+                                MainDbSend("UPDATE `users` SET " +
+                                           "`ip` = '" + clientIp + "'," +
+                                           "`session` = '" + session + "'," +
+                                           "`time_auth` = '" + time + "' " +
+                                           "WHERE `login` = '" + dataObject.Login + "'");
 
                                 Ws.AuthSockets.Add(new SocketsList
                                 {
@@ -78,14 +76,14 @@ namespace p7ss_server.Classes.Modules.Auth
                                 responseObject = new ResponseJson
                                 {
                                     Result = true,
+                                    Id = requestId,
                                     Response = new ResponseAuth
                                     {
                                         User_id = reader.GetInt32(0),
                                         Session = session,
-                                        First_name = reader.GetString(1),
-                                        Last_name = reader.GetString(2),
-                                        Avatar = reader.GetString(3),
-                                        Status = reader.GetString(4)
+                                        Name = reader.GetString(1),
+                                        Avatar = reader.GetString(2),
+                                        Status = reader.GetString(3)
                                     }
                                 };
                             }

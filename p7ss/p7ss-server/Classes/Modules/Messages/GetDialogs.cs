@@ -10,11 +10,12 @@ namespace p7ss_server.Classes.Modules.Messages
 {
     internal class GetDialogs : Core
     {
-        internal static object Execute(SocketsList thisAuthSocket, JToken data)
+        internal static object Execute(SocketsList thisAuthSocket, int requestId, JToken data)
         {
             ResponseJson responseObject = new ResponseJson
             {
-                Result = false
+                Result = false,
+                Id = requestId
             };
 
             GetDialogsBody dataObject = new GetDialogsBody
@@ -45,9 +46,7 @@ namespace p7ss_server.Classes.Modules.Messages
 
                 MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `users` LIKE '%|" + thisAuthSocket.UserId + "|%' ORDER BY `time_update` DESC LIMIT " + dataObject.Offset + ", " + dataObject.Limit, connect1);
                 MySqlDataReader reader1 = command.ExecuteReader();
-
                 List<ResponseGetDialogs> dialogs = new List<ResponseGetDialogs>();
-
                 while (reader1.Read())
                 {
                     switch (reader1.GetString(1))
@@ -67,7 +66,6 @@ namespace p7ss_server.Classes.Modules.Messages
                             int recipient = users[1] == thisAuthSocket.UserId.ToString() ? Convert.ToInt32(users[2]) : Convert.ToInt32(users[1]);
                             ResponseGetDialogs peer = null;
                             DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0));
-                            
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
                             {
                                 peer = new ResponseGetDialogs
@@ -80,52 +78,48 @@ namespace p7ss_server.Classes.Modules.Messages
                                     connect2.ConnectionString = builder.ConnectionString;
                                     connect2.Open();
 
-                                    command = new MySqlCommand("SELECT `first_name`, `last_name`, `avatar` FROM `users` WHERE `id` = '" + recipient + "'", connect2);
+                                    command = new MySqlCommand("SELECT `name`, `avatar` FROM `users` WHERE `id` = '" + recipient + "'", connect2);
                                     MySqlDataReader reader2 = command.ExecuteReader();
-
                                     while (reader2.Read())
                                     {
-                                        peer.Name = reader2.GetString(1) != null
-                                            ? reader2.GetString(0) + " " + reader2.GetString(1)
-                                            : reader2.GetString(0);
-                                        peer.Avatar = reader2.GetString(2);
+                                        peer.Name = reader2.GetString(0);
+                                        peer.Avatar = reader2.GetString(1);
                                     }
 
                                     reader2.Close();
                                 }
 
+                                string messages;
                                 using (StreamReader sr = new StreamReader(file.ToString()))
                                 {
-                                    string messages = sr.ReadToEnd();
+                                    messages = sr.ReadToEnd();
+                                }
 
-                                    if (!string.IsNullOrEmpty(messages))
+                                if (!string.IsNullOrEmpty(messages))
+                                {
+                                    JArray json = JArray.Parse(messages);
+                                    for (var i = json.Count - 1; i >= 0; i--)
                                     {
-                                        JArray json = JArray.Parse(messages);
-
-                                        for (var i = json.Count - 1; i >= 0; i--)
+                                        if (peer.Message == null)
                                         {
-                                            if (peer.Message == null)
+                                            bool delete = false;
+                                            foreach (var current in json[i]["hide"])
                                             {
-                                                bool delete = false;
-
-                                                foreach (var current in json[i]["hide"])
+                                                if ((int)current == thisAuthSocket.UserId)
                                                 {
-                                                    if ((int)current == thisAuthSocket.UserId)
-                                                    {
-                                                        delete = true;
-                                                    }
-                                                }
-
-                                                if (!delete)
-                                                {
-                                                    peer.Message = (string)json[i]["text"];
-                                                    peer.Date = (int)json[i]["date"];
+                                                    delete = true;
                                                 }
                                             }
-                                            else
+
+                                            if (!delete)
                                             {
-                                                break;
+                                                peer.Message = (string)json[i]["text"];
+                                                peer.Date = (int)json[i]["date"];
                                             }
+                                        }
+                                        else
+                                        {
+                                            break;
                                         }
                                     }
                                 }
