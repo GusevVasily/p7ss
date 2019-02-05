@@ -1,7 +1,10 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +16,8 @@ namespace p7ss_client.Classes.WebSockets
 {
     internal class Local : Core
     {
+        internal static List<AllLocalSockets> AllLocalSockets = new List<AllLocalSockets>();
+
         public static async void Open()
         {
             CancellationTokenSource cancellation = new CancellationTokenSource();
@@ -98,12 +103,18 @@ namespace p7ss_client.Classes.WebSockets
                         }
                     }
 
+                    AllLocalSockets.Add(new AllLocalSockets
+                    {
+                        Ip = webSocket.LocalEndpoint.ToString().Split("://".ToCharArray())[0],
+                        Ws = webSocket
+                    });
+
                     ResponseLocal localUserData = CheckRemoteSocket();
                     if (localUserData == null)
                     {
                         localUserData = new ResponseLocal
                         {
-                            Module = "auth.Start",
+                            Module = "auth",
                             Data = new ResponseLocalData()
                         };
                     }
@@ -183,7 +194,7 @@ namespace p7ss_client.Classes.WebSockets
 
                                                         case "signUp":
                                                         case "signIn":
-                                                            UserData myData = new UserData
+                                                            UserData = new UserData
                                                             {
                                                                 User_id = (int)response["response"]["user_id"],
                                                                 Session = (string)response["response"]["session"],
@@ -197,12 +208,19 @@ namespace p7ss_client.Classes.WebSockets
                                                                 Directory.CreateDirectory("data");
                                                             }
 
-                                                            UpdateSettings(myData);
+                                                            UpdateSettings(UserData);
 
-                                                            UserData = myData;
-                                                            myData.Session = null;
-
-                                                            localResponse.Data = myData;
+                                                            localResponse.Data = new ResponseLocal
+                                                            {
+                                                                Module = "main",
+                                                                Data = new UserData
+                                                                {
+                                                                    User_id = (int)response["response"]["user_id"],
+                                                                    Name = (string)response["response"]["name"],
+                                                                    Avatar = (string)response["response"]["avatar"],
+                                                                    Status = (string)response["response"]["status"]
+                                                                }
+                                                            };
 
                                                             break;
                                                     }
@@ -281,5 +299,35 @@ namespace p7ss_client.Classes.WebSockets
                 await webSocket.CloseAsync();
             }
         }
+
+        internal static async void SendAllMessage(string message)
+        {
+            List<AllLocalSockets> allSockets = AllLocalSockets.Where(x => x.Ip == "127.0.0.1").ToList();
+            if (allSockets.Count > 0)
+            {
+                foreach (var current in allSockets.ToList())
+                {
+                    try
+                    {
+                        using (WebSocketMessageWriteStream messageWriter = current.Ws.CreateMessageWriter(WebSocketMessageType.Text))
+                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                        {
+                            await sw.WriteAsync(message);
+                            await sw.FlushAsync();
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        AllLocalSockets.Remove(current);
+                    }
+                }
+            }
+        }
+    }
+
+    class AllLocalSockets
+    {
+        public string Ip;
+        public WebSocket Ws;
     }
 }

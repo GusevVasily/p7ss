@@ -199,23 +199,20 @@ namespace p7ss_server.Classes
                                                 break;
 
                                             case "importAuthorization":
-                                                if (thisAuthSocket == null)
+                                                responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, requestId, json["params"], webSocket);
+                                                if (responseData.Result)
                                                 {
-                                                    responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, requestId, json["params"], webSocket);
-                                                    if (responseData.Result)
+                                                    ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization)responseData.Response;
+                                                    thisAuthSocket = new SocketsList
                                                     {
-                                                        ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization)responseData.Response;
-                                                        thisAuthSocket = new SocketsList
-                                                        {
-                                                            UserId = responseDataBody.User_id,
-                                                            Ip = clientIp,
-                                                            Session = responseDataBody.Session,
-                                                            Ws = webSocket
-                                                        };
-                                                    }
-
-                                                    response = responseData;
+                                                        UserId = responseDataBody.User_id,
+                                                        Ip = clientIp,
+                                                        Session = responseDataBody.Session,
+                                                        Ws = webSocket
+                                                    };
                                                 }
+
+                                                response = responseData;
 
                                                 break;
 
@@ -312,11 +309,6 @@ namespace p7ss_server.Classes
                                         };
 
                                         break;
-                                }
-
-                                if (thisAuthSocket != null)
-                                {
-                                    Console.WriteLine(thisAuthSocket.UserId + ": " + webSocket.IsConnected); // debug
                                 }
 
                                 using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))

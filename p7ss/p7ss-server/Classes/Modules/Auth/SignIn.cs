@@ -53,8 +53,7 @@ namespace p7ss_server.Classes.Modules.Auth
                         {
                             TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
 
-                            //if (tfa.VerifyCode(reader.GetString(4), dataObject.TfaCode))
-                            if (true) // debug
+                            if (tfa.VerifyCode(reader.GetString(4), dataObject.TfaCode))
                             {
                                 int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                 string session = GenerateSession(dataObject.Login);

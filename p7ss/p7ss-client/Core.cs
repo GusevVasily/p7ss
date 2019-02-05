@@ -18,8 +18,8 @@ namespace p7ss_client
             NullValueHandling = NullValueHandling.Ignore
         };
 
-        internal static UserData UserData = null;
-        internal static Thread RemoteWsDaemon = null;
+        internal static UserData UserData;
+        internal static Thread RemoteWsDaemon;
 
         internal static void UpdateSettings(object data)
         {
@@ -74,6 +74,7 @@ namespace p7ss_client
                                     new RemoteSend
                                     {
                                         Method = "auth.importAuthorization",
+                                        Id = new Random((int)DateTime.Now.Ticks).Next(),
                                         Params = new ImportAuthorization
                                         {
                                             Id = (int)settingsJson["user_id"],
@@ -97,7 +98,7 @@ namespace p7ss_client
 
                                         localUserData = new ResponseLocal
                                         {
-                                            Module = "main.Start",
+                                            Module = "main",
                                             Data = new UserData
                                             {
                                                 User_id = (int)settingsJson["response"]["user_id"],
@@ -133,6 +134,7 @@ namespace p7ss_client
                         new RemoteSend
                         {
                             Method = "auth.importAuthorization",
+                            Id = new Random((int)DateTime.Now.Ticks).Next(),
                             Params = new ImportAuthorization
                             {
                                 Id = UserData.User_id,
@@ -156,7 +158,7 @@ namespace p7ss_client
 
                             localUserData = new ResponseLocal
                             {
-                                Module = "main.Start",
+                                Module = "main",
                                 Data = new UserData
                                 {
                                     User_id = (int)settingsJson["response"]["user_id"],

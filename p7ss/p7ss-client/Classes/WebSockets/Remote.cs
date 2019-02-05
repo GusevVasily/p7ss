@@ -86,7 +86,7 @@ namespace p7ss_client.Classes.WebSockets
                             }
                             else if (!string.IsNullOrEmpty((string)json["module"]))
                             {
-                                // перенаправить в браузер юзера
+                                Local.SendAllMessage(message);
                             }
                         }
                     }
@@ -101,7 +101,6 @@ namespace p7ss_client.Classes.WebSockets
             {
                 try
                 {
-                    Console.WriteLine("request: " + (JObject)data); // debug
                     RemoteSocket.WriteStringAsync(JsonConvert.SerializeObject(data, SerializerSettings), _cancellation.Token).Wait(_cancellation.Token);
 
                     for (int i = 0; i < 25; i++)
@@ -158,6 +157,7 @@ namespace p7ss_client.Classes.WebSockets
     class RemoteSend
     {
         public string Method;
+        public int Id;
         public object Params;
     }
 
