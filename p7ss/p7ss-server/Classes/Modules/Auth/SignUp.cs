@@ -18,21 +18,21 @@ namespace p7ss_server.Classes.Modules.Auth
                 Id = requestId
             };
 
-            if (!string.IsNullOrEmpty((string)data["login"])
+            if (!string.IsNullOrEmpty((string) data["login"])
                     && data["login"].ToString().Length >= 5
                     && data["login"].ToString().Length <= 25
-                && !string.IsNullOrEmpty((string)data["tfa_code"])
+                && !string.IsNullOrEmpty((string) data["tfa_code"])
                     && data["tfa_code"].ToString().Length == 6
-                && !string.IsNullOrEmpty((string)data["name"])
+                && !string.IsNullOrEmpty((string) data["name"])
                     && data["name"].ToString().Length >= 1
                     && data["name"].ToString().Length <= 256
             )
             {
                 SignUpBody dataObject = new SignUpBody
                 {
-                    Login = (string)data["login"],
-                    TfaCode = (string)data["tfa_code"],
-                    Name = (string)data["name"]
+                    Login = (string) data["login"],
+                    TfaCode = (string) data["tfa_code"],
+                    Name = (string) data["name"]
                 };
 
                 using (MySqlConnection connect = new MySqlConnection())
@@ -53,7 +53,6 @@ namespace p7ss_server.Classes.Modules.Auth
 
                     MySqlCommand command = new MySqlCommand("SELECT `id`, `activated`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `ip` = '" + clientIp + "'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
-
                     if (reader.HasRows)
                     {
                         while (reader.Read())
@@ -61,10 +60,9 @@ namespace p7ss_server.Classes.Modules.Auth
                             if (reader.GetInt32(1) == 0)
                             {
                                 TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
-
                                 if (tfa.VerifyCode(reader.GetString(2), dataObject.TfaCode))
                                 {
-                                    int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
+                                    int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                     string session = GenerateSession(dataObject.Login);
 
                                     MainDbSend("UPDATE `users` SET " +

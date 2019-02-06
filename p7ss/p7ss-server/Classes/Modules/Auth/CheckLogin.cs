@@ -17,7 +17,7 @@ namespace p7ss_server.Classes.Modules.Auth
 
             CheckLoginBody dataObject = new CheckLoginBody
             {
-                Login = (string)data["login"]
+                Login = (string) data["login"]
             };
 
             if (!string.IsNullOrEmpty(dataObject.Login)

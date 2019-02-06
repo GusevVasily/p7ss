@@ -20,15 +20,15 @@ namespace p7ss_server.Classes.Modules.Messages
                 Id = requestId
             };
 
-            if (!string.IsNullOrEmpty((string)data["peer"])
-                && !string.IsNullOrEmpty((string)data["message"])
+            if (!string.IsNullOrEmpty((string) data["peer"])
+                && !string.IsNullOrEmpty((string) data["message"])
                 && data["message"].ToString().Length > 1
             )
             {
                 SendMessageBody dataObject = new SendMessageBody
                 {
-                    Peer = (int)data["peer"],
-                    Message = (string)data["message"]
+                    Peer = (int) data["peer"],
+                    Message = (string) data["message"]
                 };
 
                 using (MySqlConnection connect1 = new MySqlConnection())
@@ -47,7 +47,7 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect1.ConnectionString = builder.ConnectionString;
                     connect1.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect1);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect1);
                     MySqlDataReader reader1 = command.ExecuteReader();
                     string fileName = DateTime.Now.ToString("yyyyMMdd") + ".dat",
                         historyJson = null,
@@ -87,7 +87,7 @@ namespace p7ss_server.Classes.Modules.Messages
                                         }
 
                                         JArray history = JArray.Parse(historyJson);
-                                        messageId = (int)history[history.Count - 1]["id"] + 1;
+                                        messageId = (int) history[history.Count - 1]["id"] + 1;
 
                                         break;
                                     }

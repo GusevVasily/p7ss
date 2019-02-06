@@ -18,12 +18,12 @@ namespace p7ss_server.Classes.Modules.Auth
                 Id = requestId
             };
 
-            if (!string.IsNullOrEmpty((string)data["id"]) && !string.IsNullOrEmpty((string)data["session"]))
+            if (!string.IsNullOrEmpty((string) data["id"]) && !string.IsNullOrEmpty((string) data["session"]))
             {
                 ImportAuthorizationBody dataObject = new ImportAuthorizationBody
                 {
-                    Id = (int)data["id"],
-                    Session = (string)data["session"]
+                    Id = (int) data["id"],
+                    Session = (string) data["session"]
                 };
 
                 using (MySqlConnection connect = new MySqlConnection())
@@ -49,7 +49,7 @@ namespace p7ss_server.Classes.Modules.Auth
                     {
                         while (reader.Read())
                         {
-                            int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
+                            int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                             string session = GenerateSession(reader.GetString(0));
 
                             MainDbSend("UPDATE `users` SET " +

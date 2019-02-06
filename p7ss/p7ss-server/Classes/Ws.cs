@@ -86,7 +86,7 @@ namespace p7ss_server.Classes
                         //using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
                         //using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                         //{
-                        //    await sw.WriteAsync(JsonConvert.SerializeObject((int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds, SerializerSettings));
+                        //    await sw.WriteAsync(JsonConvert.SerializeObject((int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds, SerializerSettings));
                         //    await sw.FlushAsync();
                         //}
 
@@ -139,7 +139,7 @@ namespace p7ss_server.Classes
                                 object response = new ResponseJson
                                 {
                                     Result = false,
-                                    Id = json["id"] != null ? (int)json["id"] : 0,
+                                    Id = json["id"] != null ? (int) json["id"] : 0,
                                     Response = 400
                                 };
 
@@ -159,10 +159,10 @@ namespace p7ss_server.Classes
                                             case "signUp":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    responseData = (ResponseJson)SignUp.Execute(clientIp, requestId, json["params"], webSocket);
+                                                    responseData = (ResponseJson) SignUp.Execute(clientIp, requestId, json["params"], webSocket);
                                                     if (responseData.Result)
                                                     {
-                                                        ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
+                                                        ResponseAuth responseDataBody = (ResponseAuth) responseData.Response;
                                                         thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
@@ -180,10 +180,10 @@ namespace p7ss_server.Classes
                                             case "signIn":
                                                 if (thisAuthSocket == null)
                                                 {
-                                                    responseData = (ResponseJson)SignIn.Execute(clientIp, requestId, json["params"], webSocket);
+                                                    responseData = (ResponseJson) SignIn.Execute(clientIp, requestId, json["params"], webSocket);
                                                     if (responseData.Result)
                                                     {
-                                                        ResponseAuth responseDataBody = (ResponseAuth)responseData.Response;
+                                                        ResponseAuth responseDataBody = (ResponseAuth) responseData.Response;
                                                         thisAuthSocket = new SocketsList
                                                         {
                                                             UserId = responseDataBody.User_id,
@@ -199,10 +199,10 @@ namespace p7ss_server.Classes
                                                 break;
 
                                             case "importAuthorization":
-                                                responseData = (ResponseJson)ImportAuthorization.Execute(clientIp, requestId, json["params"], webSocket);
+                                                responseData = (ResponseJson) ImportAuthorization.Execute(clientIp, requestId, json["params"], webSocket);
                                                 if (responseData.Result)
                                                 {
-                                                    ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization)responseData.Response;
+                                                    ResponseImportAuthorization responseDataBody = (ResponseImportAuthorization) responseData.Response;
                                                     thisAuthSocket = new SocketsList
                                                     {
                                                         UserId = responseDataBody.User_id,
@@ -253,14 +253,14 @@ namespace p7ss_server.Classes
                                                     break;
 
                                                 case "sendMessage":
-                                                    responseData = (ResponseJson)SendMessage.Execute(thisAuthSocket, requestId, json["params"]);
+                                                    responseData = (ResponseJson) SendMessage.Execute(thisAuthSocket, requestId, json["params"]);
                                                     if (responseData.Result)
                                                     {
-                                                        ResponseSendMessageWs responseDataBody = (ResponseSendMessageWs)responseData.Response;
+                                                        ResponseSendMessageWs responseDataBody = (ResponseSendMessageWs) responseData.Response;
                                                         List<SocketsList> twoSocket = AuthSockets.Where(x => x.UserId == responseDataBody.Recipient).ToList();
                                                         if (twoSocket.Count > 0)
                                                         {
-                                                            using (WebSocketMessageWriteStream messageWriter =twoSocket.Last().Ws.CreateMessageWriter(WebSocketMessageType.Text))
+                                                            using (WebSocketMessageWriteStream messageWriter = twoSocket.Last().Ws.CreateMessageWriter(WebSocketMessageType.Text))
                                                             using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                                             {
                                                                 AuthSocketSend userMessage = new AuthSocketSend

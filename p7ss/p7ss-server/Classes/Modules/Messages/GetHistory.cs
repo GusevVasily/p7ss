@@ -46,7 +46,7 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `id` = '" + dataObject.Peer + "' AND `users` LIKE '%|" + thisAuthSocket.UserId + "|%'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
                     if (reader.HasRows)
                     {
@@ -80,6 +80,7 @@ namespace p7ss_server.Classes.Modules.Messages
                                             messages.Add(new MessageParamsAdd
                                             {
                                                 Id = (int)messagesInFile[i]["id"],
+                                                Sender = (int)messagesInFile[i]["sender"],
                                                 Text = (string)messagesInFile[i]["text"],
                                                 Date = (int)messagesInFile[i]["date"],
                                             });
@@ -93,6 +94,7 @@ namespace p7ss_server.Classes.Modules.Messages
                             responseObject = new ResponseJson
                             {
                                 Result = true,
+                                Id = requestId,
                                 Response = messages
                             };
                         }

@@ -13,7 +13,7 @@ namespace p7ss_server.Classes.Modules.Auth
                 Id = requestId
             };
 
-            int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
+            int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
             
             MainDbSend("UPDATE `users` SET `session` = NULL, `time_logout` = '" + time + "' WHERE `id` = '" + thisAuthSocket.UserId + "'");
 

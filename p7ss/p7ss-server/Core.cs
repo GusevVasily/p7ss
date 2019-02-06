@@ -29,7 +29,7 @@ namespace p7ss_server
                 hash = BitConverter.ToString(
                     sha512.ComputeHash(
                         Encoding.UTF8.GetBytes(
-                            "p7ss://" + login + "/" + new Random((int)DateTime.Now.Ticks).Next().ToString()
+                            "p7ss://" + login + "/" + new Random((int) DateTime.Now.Ticks).Next().ToString()
                         )
                     )
                 ).Replace("-", "").ToLower();

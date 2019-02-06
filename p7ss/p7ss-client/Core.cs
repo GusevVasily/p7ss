@@ -70,15 +70,15 @@ namespace p7ss_client
                             if (settingsJson["user_id"] != null && settingsJson["session"] != null)
                             {
                                 settingsJson = Remote.Send(
-                                    new Random((int)DateTime.Now.Ticks).Next(),
+                                    new Random((int) DateTime.Now.Ticks).Next(),
                                     new RemoteSend
                                     {
                                         Method = "auth.importAuthorization",
-                                        Id = new Random((int)DateTime.Now.Ticks).Next(),
+                                        Id = new Random((int) DateTime.Now.Ticks).Next(),
                                         Params = new ImportAuthorization
                                         {
-                                            Id = (int)settingsJson["user_id"],
-                                            Session = (string)settingsJson["session"]
+                                            Id = (int) settingsJson["user_id"],
+                                            Session = (string) settingsJson["session"]
                                         }
                                     }
                                 );
@@ -89,11 +89,11 @@ namespace p7ss_client
                                     {
                                         UserData = new UserData
                                         {
-                                            User_id = (int)settingsJson["response"]["user_id"],
-                                            Session = (string)settingsJson["response"]["session"],
-                                            Name = (string)settingsJson["response"]["name"],
-                                            Avatar = (string)settingsJson["response"]["avatar"],
-                                            Status = (string)settingsJson["response"]["status"]
+                                            User_id = (int) settingsJson["response"]["user_id"],
+                                            Session = (string) settingsJson["response"]["session"],
+                                            Name = (string) settingsJson["response"]["name"],
+                                            Avatar = (string) settingsJson["response"]["avatar"],
+                                            Status = (string) settingsJson["response"]["status"]
                                         };
 
                                         localUserData = new ResponseLocal
@@ -101,10 +101,10 @@ namespace p7ss_client
                                             Module = "main",
                                             Data = new UserData
                                             {
-                                                User_id = (int)settingsJson["response"]["user_id"],
-                                                Name = (string)settingsJson["response"]["name"],
-                                                Avatar = (string)settingsJson["response"]["avatar"],
-                                                Status = (string)settingsJson["response"]["status"]
+                                                User_id = (int) settingsJson["response"]["user_id"],
+                                                Name = (string) settingsJson["response"]["name"],
+                                                Avatar = (string) settingsJson["response"]["avatar"],
+                                                Status = (string) settingsJson["response"]["status"]
                                             }
                                         };
 
@@ -116,6 +116,7 @@ namespace p7ss_client
                             }
                         }
                         catch (IOException) { }
+                        catch (JsonReaderException) { }
                     }
                 }
                 else
@@ -130,11 +131,11 @@ namespace p7ss_client
                 if (UserData != null)
                 {
                     JObject settingsJson = Remote.Send(
-                        new Random((int)DateTime.Now.Ticks).Next(),
+                        new Random((int) DateTime.Now.Ticks).Next(),
                         new RemoteSend
                         {
                             Method = "auth.importAuthorization",
-                            Id = new Random((int)DateTime.Now.Ticks).Next(),
+                            Id = new Random((int) DateTime.Now.Ticks).Next(),
                             Params = new ImportAuthorization
                             {
                                 Id = UserData.User_id,
@@ -149,11 +150,11 @@ namespace p7ss_client
                         {
                             UserData = new UserData
                             {
-                                User_id = (int)settingsJson["response"]["user_id"],
-                                Session = (string)settingsJson["response"]["session"],
-                                Name = (string)settingsJson["response"]["name"],
-                                Avatar = (string)settingsJson["response"]["avatar"],
-                                Status = (string)settingsJson["response"]["status"]
+                                User_id = (int) settingsJson["response"]["user_id"],
+                                Session = (string) settingsJson["response"]["session"],
+                                Name = (string) settingsJson["response"]["name"],
+                                Avatar = (string) settingsJson["response"]["avatar"],
+                                Status = (string) settingsJson["response"]["status"]
                             };
 
                             localUserData = new ResponseLocal
@@ -161,10 +162,10 @@ namespace p7ss_client
                                 Module = "main",
                                 Data = new UserData
                                 {
-                                    User_id = (int)settingsJson["response"]["user_id"],
-                                    Name = (string)settingsJson["response"]["name"],
-                                    Avatar = (string)settingsJson["response"]["avatar"],
-                                    Status = (string)settingsJson["response"]["status"]
+                                    User_id = (int) settingsJson["response"]["user_id"],
+                                    Name = (string) settingsJson["response"]["name"],
+                                    Avatar = (string) settingsJson["response"]["avatar"],
+                                    Status = (string) settingsJson["response"]["status"]
                                 }
                             };
 

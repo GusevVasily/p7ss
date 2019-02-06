@@ -20,11 +20,11 @@ namespace p7ss_server.Classes.Modules.Messages
 
             GetDialogsBody dataObject = new GetDialogsBody
             {
-                Offset = !string.IsNullOrEmpty((string)data["offset"])
-                    ? (int)data["offset"] <= 50 ? (int)data["offset"] : 0
+                Offset = !string.IsNullOrEmpty((string) data["offset"])
+                    ? (int) data["offset"] <= 50 ? (int) data["offset"] : 0
                     : 0,
-                Limit = !string.IsNullOrEmpty((string)data["limit"])
-                    ? (int)data["limit"] <= 50 ? (int)data["limit"] : 50
+                Limit = !string.IsNullOrEmpty((string) data["limit"])
+                    ? (int) data["limit"] <= 50 ? (int) data["limit"] : 50
                     : 50
             };
 
@@ -44,7 +44,7 @@ namespace p7ss_server.Classes.Modules.Messages
                 connect1.ConnectionString = builder.ConnectionString;
                 connect1.Open();
 
-                MySqlCommand command = new MySqlCommand("SELECT * FROM `im` WHERE `users` LIKE '%|" + thisAuthSocket.UserId + "|%' ORDER BY `time_update` DESC LIMIT " + dataObject.Offset + ", " + dataObject.Limit, connect1);
+                MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users` FROM `im` WHERE `users` LIKE '%|" + thisAuthSocket.UserId + "|%' ORDER BY `time_update` DESC LIMIT " + dataObject.Offset + ", " + dataObject.Limit, connect1);
                 MySqlDataReader reader1 = command.ExecuteReader();
                 List<ResponseGetDialogs> dialogs = new List<ResponseGetDialogs>();
                 while (reader1.Read())
@@ -68,22 +68,19 @@ namespace p7ss_server.Classes.Modules.Messages
                             DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader1.GetString(1) + "/" + reader1.GetInt32(0));
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
                             {
-                                peer = new ResponseGetDialogs
-                                {
-                                    Id = reader1.GetInt32(0)
-                                };
-
+                                peer = new ResponseGetDialogs();
                                 using (MySqlConnection connect2 = new MySqlConnection())
                                 {
                                     connect2.ConnectionString = builder.ConnectionString;
                                     connect2.Open();
 
-                                    command = new MySqlCommand("SELECT `name`, `avatar` FROM `users` WHERE `id` = '" + recipient + "'", connect2);
+                                    command = new MySqlCommand("SELECT `id`, `name`, `avatar` FROM `users` WHERE `id` = '" + recipient + "'", connect2);
                                     MySqlDataReader reader2 = command.ExecuteReader();
                                     while (reader2.Read())
                                     {
-                                        peer.Name = reader2.GetString(0);
-                                        peer.Avatar = reader2.GetString(1);
+                                        peer.Id = reader2.GetInt32(0);
+                                        peer.Name = reader2.GetString(1);
+                                        peer.Avatar = reader2.GetString(2);
                                     }
 
                                     reader2.Close();
@@ -105,7 +102,7 @@ namespace p7ss_server.Classes.Modules.Messages
                                             bool delete = false;
                                             foreach (var current in json[i]["hide"])
                                             {
-                                                if ((int)current == thisAuthSocket.UserId)
+                                                if ((int) current == thisAuthSocket.UserId)
                                                 {
                                                     delete = true;
                                                 }
@@ -113,8 +110,8 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                             if (!delete)
                                             {
-                                                peer.Message = (string)json[i]["text"];
-                                                peer.Date = (int)json[i]["date"];
+                                                peer.Message = (string) json[i]["text"];
+                                                peer.Date = (int) json[i]["date"];
                                             }
                                         }
                                         else

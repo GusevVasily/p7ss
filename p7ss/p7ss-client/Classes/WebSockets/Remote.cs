@@ -15,7 +15,7 @@ namespace p7ss_client.Classes.WebSockets
     internal class Remote : Core
     {
         private static CancellationTokenSource _cancellation;
-        private static readonly Dictionary<int, JObject> _requests = new Dictionary<int, JObject>();
+        private static readonly Dictionary<int, JObject> Requests = new Dictionary<int, JObject>();
         internal static WebSocket RemoteSocket;
 
         public static async void Open()
@@ -70,7 +70,7 @@ namespace p7ss_client.Classes.WebSockets
 
             while (!_cancellation.IsCancellationRequested)
             {
-                while (!_cancellation.IsCancellationRequested)
+                try
                 {
                     WebSocketMessageReadStream messageRead = await RemoteSocket.ReadMessageAsync(_cancellation.Token);
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
@@ -82,7 +82,7 @@ namespace p7ss_client.Classes.WebSockets
                             JObject json = JObject.Parse(message);
                             if (!string.IsNullOrEmpty((string)json["result"]))
                             {
-                                _requests.Add((int)json["id"], json);
+                                Requests.Add((int)json["id"], json);
                             }
                             else if (!string.IsNullOrEmpty((string)json["module"]))
                             {
@@ -90,6 +90,10 @@ namespace p7ss_client.Classes.WebSockets
                             }
                         }
                     }
+                }
+                catch (WebSocketException)
+                {
+                    break;
                 }
             }
         }
@@ -107,10 +111,10 @@ namespace p7ss_client.Classes.WebSockets
                     {
                         Thread.Sleep(200);
 
-                        List<KeyValuePair<int, JObject>> search = _requests.Where(x => x.Key == num).ToList();
+                        List<KeyValuePair<int, JObject>> search = Requests.Where(x => x.Key == num).ToList();
                         if (search.Count > 0)
                         {
-                            _requests.Remove(search.Last().Key);
+                            Requests.Remove(search.Last().Key);
 
                             result = search.Last().Value;
 

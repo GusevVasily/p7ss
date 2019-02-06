@@ -1,10 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +13,7 @@ namespace p7ss_client.Classes.WebSockets
 {
     internal class Local : Core
     {
-        internal static List<AllLocalSockets> AllLocalSockets = new List<AllLocalSockets>();
+        private static WebSocket _localSocket;
 
         public static async void Open()
         {
@@ -79,11 +76,11 @@ namespace p7ss_client.Classes.WebSockets
 
                 await AcceptWebSocketsAsync(localServer, cancellation.Token);
             }
-            else
-            {
+            //else
+            //{
                 // Если нет открытых портов (из тех 10 штук)
                 // TODO
-            }
+            //}
         }
 
         private static async Task AcceptWebSocketsAsync(WebSocketListener server, CancellationToken cancellation)
@@ -102,45 +99,69 @@ namespace p7ss_client.Classes.WebSockets
                             break;
                         }
                     }
-
-                    AllLocalSockets.Add(new AllLocalSockets
+                    else
                     {
-                        Ip = webSocket.LocalEndpoint.ToString().Split("://".ToCharArray())[0],
-                        Ws = webSocket
-                    });
+                        ResponseLocal localUserData;
+                        if (_localSocket != null)
+                        {
+                            try
+                            {
+                                localUserData = new ResponseLocal
+                                {
+                                    Module = "close",
+                                    Data = new ResponseLocalData()
+                                };
 
-                    ResponseLocal localUserData = CheckRemoteSocket();
-                    if (localUserData == null)
-                    {
-                        localUserData = new ResponseLocal
+                                using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                                using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                                {
+                                    await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
+                                    await sw.FlushAsync();
+                                }
+
+                                await _localSocket.CloseAsync();
+                            }
+                            catch (WebSocketException)
+                            {
+                                // nothing
+                            }
+                        }
+
+                        _localSocket = webSocket;
+                        localUserData = CheckRemoteSocket() ?? new ResponseLocal
                         {
                             Module = "auth",
                             Data = new ResponseLocalData()
                         };
-                    }
 
-                    using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                    using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
-                    {
-                        await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
-                        await sw.FlushAsync();
-                    }
+                        Console.WriteLine("hello: " + localUserData.Module); // debug
+                        using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                        {
+                            await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
+                            await sw.FlushAsync();
+                        }
 
 #pragma warning disable 4014
-                    EchoAllIncomingMessagesAsync(webSocket, cancellation);
+                        EchoAllIncomingMessagesAsync(cancellation);
 #pragma warning restore 4014
+                    }
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
+                catch (WebSocketException)
+                {
+                    _localSocket = null;
+                }
                 catch (AggregateException)
                 {
-                    // nothing
+                    _localSocket = null;
                 }
                 catch (NullReferenceException)
                 {
-                    // nothing
+                    _localSocket = null;
                 }
                 catch (Exception e)
                 {
@@ -149,13 +170,13 @@ namespace p7ss_client.Classes.WebSockets
             }
         }
 
-        private static async Task EchoAllIncomingMessagesAsync(WebSocket webSocket, CancellationToken cancellation)
+        private static async Task EchoAllIncomingMessagesAsync(CancellationToken cancellation)
         {
             try
             {
-                while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
+                while (_localSocket.IsConnected && !cancellation.IsCancellationRequested)
                 {
-                    WebSocketMessageReadStream messageRead = await webSocket.ReadMessageAsync(cancellation);
+                    WebSocketMessageReadStream messageRead = await _localSocket.ReadMessageAsync(cancellation);
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
                     {
                         string request = await new StreamReader(messageRead, Utf8NoBom).ReadToEndAsync();
@@ -174,7 +195,7 @@ namespace p7ss_client.Classes.WebSockets
                                     {
                                         ResponseLocal localResponse = new ResponseLocal
                                         {
-                                            Module = (string)json["method"]
+                                            Module = (string) json["method"]
                                         };
 
                                         if ((bool) response["result"])
@@ -184,10 +205,19 @@ namespace p7ss_client.Classes.WebSockets
                                                 case "auth":
                                                     switch (method[1])
                                                     {
+                                                        case "logOut":
+                                                            UserData = null;
+                                                            RemoteWsDaemon = null;
+                                                            _localSocket = null;
+
+                                                            UpdateSettings(new JObject());
+
+                                                            break;
+
                                                         case "checkLogin":
                                                             localResponse.Data = new ResponseLocalData
                                                             {
-                                                                Tfa_secret = (string)response["response"]["tfa_secret"]
+                                                                Tfa_secret = (string) response["response"]["tfa_secret"]
                                                             };
 
                                                             break;
@@ -196,11 +226,11 @@ namespace p7ss_client.Classes.WebSockets
                                                         case "signIn":
                                                             UserData = new UserData
                                                             {
-                                                                User_id = (int)response["response"]["user_id"],
-                                                                Session = (string)response["response"]["session"],
-                                                                Name = (string)response["response"]["name"],
-                                                                Avatar = (string)response["response"]["avatar"],
-                                                                Status = (string)response["response"]["status"]
+                                                                User_id = (int) response["response"]["user_id"],
+                                                                Session = (string) response["response"]["session"],
+                                                                Name = (string) response["response"]["name"],
+                                                                Avatar = (string) response["response"]["avatar"],
+                                                                Status = (string) response["response"]["status"]
                                                             };
 
                                                             if (!Directory.Exists("data"))
@@ -215,10 +245,10 @@ namespace p7ss_client.Classes.WebSockets
                                                                 Module = "main",
                                                                 Data = new UserData
                                                                 {
-                                                                    User_id = (int)response["response"]["user_id"],
-                                                                    Name = (string)response["response"]["name"],
-                                                                    Avatar = (string)response["response"]["avatar"],
-                                                                    Status = (string)response["response"]["status"]
+                                                                    User_id = (int) response["response"]["user_id"],
+                                                                    Name = (string) response["response"]["name"],
+                                                                    Avatar = (string) response["response"]["avatar"],
+                                                                    Status = (string) response["response"]["status"]
                                                                 }
                                                             };
 
@@ -227,31 +257,15 @@ namespace p7ss_client.Classes.WebSockets
 
                                                     break;
 
-                                                case "messages":
-                                                    if (UserData != null)
-                                                    {
-                                                        //switch (method[1])
-                                                        //{
-                                                        //    case "getDialogs":
-
-                                                        //        break;
-
-                                                        //    case "getHistory":
-
-                                                        //        break;
-
-                                                        //    case "sendMessage":
-
-                                                        //        break;
-                                                        //}
-                                                    }
+                                                default:
+                                                    localResponse.Data = response["response"];
 
                                                     break;
                                             }
                                         }
                                         else
                                         {
-                                            // 400 ошибка (не авторизован)
+                                            // 400 ошибка (авторизован/не авторизован)
                                             // TODO
                                             localResponse.Data = new ResponseLocalData
                                             {
@@ -259,11 +273,16 @@ namespace p7ss_client.Classes.WebSockets
                                             };
                                         }
 
-                                        using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                                        using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
                                         using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                         {
                                             await sw.WriteAsync(JsonConvert.SerializeObject(localResponse, SerializerSettings));
                                             await sw.FlushAsync();
+                                        }
+
+                                        if ((string)json["method"] == "auth.logOut")
+                                        {
+                                            await _localSocket.CloseAsync();
                                         }
                                     }
                                 }
@@ -274,15 +293,15 @@ namespace p7ss_client.Classes.WebSockets
             }
             catch (FormatException)
             {
-                await webSocket.CloseAsync();
+                await _localSocket.CloseAsync();
             }
             catch (JsonReaderException)
             {
-                await webSocket.CloseAsync();
+                await _localSocket.CloseAsync();
             }
             catch (WebSocketException)
             {
-                await webSocket.CloseAsync();
+                await _localSocket.CloseAsync();
             }
             catch (AggregateException)
             {
@@ -296,38 +315,25 @@ namespace p7ss_client.Classes.WebSockets
             {
                 Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'WebSocket': " + e);
 
-                await webSocket.CloseAsync();
+                await _localSocket.CloseAsync();
             }
         }
 
         internal static async void SendAllMessage(string message)
         {
-            List<AllLocalSockets> allSockets = AllLocalSockets.Where(x => x.Ip == "127.0.0.1").ToList();
-            if (allSockets.Count > 0)
+            try
             {
-                foreach (var current in allSockets.ToList())
+                using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
+                using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                 {
-                    try
-                    {
-                        using (WebSocketMessageWriteStream messageWriter = current.Ws.CreateMessageWriter(WebSocketMessageType.Text))
-                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
-                        {
-                            await sw.WriteAsync(message);
-                            await sw.FlushAsync();
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        AllLocalSockets.Remove(current);
-                    }
+                    await sw.WriteAsync(message);
+                    await sw.FlushAsync();
                 }
             }
+            catch (Exception)
+            {
+                _localSocket = null;
+            }
         }
-    }
-
-    class AllLocalSockets
-    {
-        public string Ip;
-        public WebSocket Ws;
     }
 }

@@ -17,15 +17,15 @@ namespace p7ss_server.Classes.Modules.Auth
                 Id = requestId
             };
 
-            if (!string.IsNullOrEmpty((string)data["login"])
-                && !string.IsNullOrEmpty((string)data["tfa_code"])
+            if (!string.IsNullOrEmpty((string) data["login"])
+                && !string.IsNullOrEmpty((string) data["tfa_code"])
                     && data["tfa_code"].ToString().Length == 6
             )
             {
                 SignInBody dataObject = new SignInBody
                 {
-                    Login = (string)data["login"],
-                    TfaCode = (string)data["tfa_code"]
+                    Login = (string) data["login"],
+                    TfaCode = (string) data["tfa_code"]
                 };
 
                 using (MySqlConnection connect = new MySqlConnection())
@@ -46,16 +46,14 @@ namespace p7ss_server.Classes.Modules.Auth
 
                     MySqlCommand command = new MySqlCommand("SELECT `id`, `name`, `avatar`, `status`, `tfa_secret` FROM `users` WHERE `login` = '" + dataObject.Login + "' AND `activated` = '1'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
-
                     if (reader.HasRows)
                     {
                         while (reader.Read())
                         {
                             TwoFactorAuth tfa = new TwoFactorAuth("p7ss://" + dataObject.Login);
-
                             if (tfa.VerifyCode(reader.GetString(4), dataObject.TfaCode))
                             {
-                                int time = (int)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
+                                int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
                                 string session = GenerateSession(dataObject.Login);
 
                                 MainDbSend("UPDATE `users` SET " +

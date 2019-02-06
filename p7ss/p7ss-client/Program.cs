@@ -18,18 +18,21 @@ namespace p7ss_client
             {
                 Thread.Sleep(30000);
 
-                if (!Remote.RemoteSocket.IsConnected)
+                if (Remote.RemoteSocket != null)
                 {
-                    RemoteWsDaemon.Abort();
-
-                    RemoteWsDaemon = new Thread(Remote.Open)
+                    if (!Remote.RemoteSocket.IsConnected)
                     {
-                        IsBackground = true
-                    };
+                        RemoteWsDaemon.Abort();
 
-                    RemoteWsDaemon.Start();
+                        RemoteWsDaemon = new Thread(Remote.Open)
+                        {
+                            IsBackground = true
+                        };
 
-                    CheckRemoteSocket();
+                        RemoteWsDaemon.Start();
+
+                        CheckRemoteSocket();
+                    }
                 }
             }
         }
