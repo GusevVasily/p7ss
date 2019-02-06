@@ -134,7 +134,6 @@ namespace p7ss_client.Classes.WebSockets
                             Data = new ResponseLocalData()
                         };
 
-                        Console.WriteLine("hello: " + localUserData.Module); // debug
                         using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
                         using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                         {

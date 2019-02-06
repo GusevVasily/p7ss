@@ -110,7 +110,8 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                             if (!delete)
                                             {
-                                                peer.Message = (string) json[i]["text"];
+                                                string message = (string) json[i]["text"];
+                                                peer.Message = message.Length > 25 ? message.Remove(message.Length - (message.Length - 25)) + "..." : message;
                                                 peer.Date = (int) json[i]["date"];
                                             }
                                         }
