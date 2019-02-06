@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
+using Ionic.Zip;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -180,6 +183,45 @@ namespace p7ss_client
             UpdateSettings(new JObject());
 
             return null;
+        }
+
+        internal static void CheckUpdate()
+        {
+            Thread.Sleep(60 * 1000);
+
+            while (true)
+            {
+                try
+                {
+                    if (File.Exists("Updater.exe"))
+                    {
+                        Process updater = Process.Start("Updater.exe", "check " + Assembly.GetEntryAssembly().Location);
+                        updater.WaitForExit();
+                        if (updater.ExitCode == 200)
+                        {
+                            using (ZipFile zip = ZipFile.Read("data/update/update.zip"))
+                            {
+                                zip.ExtractAll("data/update");
+                            }
+
+                            // TODO: Уведомить юзера о новом обновлении (Local WS)
+
+                            File.Move("data/update/Updater.exe", "Updater.exe");
+                            Process.Start("Updater.exe", "install " + Assembly.GetEntryAssembly().Location); 
+                            Environment.Exit(0);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    if (Directory.Exists("data/update"))
+                    {
+                        Directory.Delete("data/update");
+                    }
+                }
+
+                Thread.Sleep(30 * 60 * 1000);
+            }
         }
     }
 

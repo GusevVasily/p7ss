@@ -12,7 +12,13 @@ namespace p7ss_client
                 IsBackground = true
             };
 
+            Thread checkUpdateThread = new Thread(CheckUpdate)
+            {
+                IsBackground = true
+            };
+
             localWsThread.Start();
+            checkUpdateThread.Start();
 
             while (true)
             {

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "p7ss-server", "p7ss-server\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "p7ss-client", "p7ss-client\p7ss-client.csproj", "{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Updater", "Updater\Updater.csproj", "{EE555845-F519-4AE0-9FF5-01B58C0DD1F4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C48D3C8-AEFC-4D0A-A0CC-4A5362093572}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE555845-F519-4AE0-9FF5-01B58C0DD1F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE555845-F519-4AE0-9FF5-01B58C0DD1F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE555845-F519-4AE0-9FF5-01B58C0DD1F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE555845-F519-4AE0-9FF5-01B58C0DD1F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

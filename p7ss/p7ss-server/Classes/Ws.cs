@@ -38,6 +38,7 @@ namespace p7ss_server.Classes
                 BufferManager = BufferManager.CreateBufferManager(bufferPoolSize, bufferSize)
             };
 
+            options.ConnectionExtensions.RegisterSecureConnection(certificate);
             options.Standards.RegisterRfc6455();
             options.Transports.ConfigureTcp(delegate (TcpTransport tcp)
             {
@@ -46,13 +47,10 @@ namespace p7ss_server.Classes
                 tcp.SendBufferSize = bufferSize;
             });
 
-            options.ConnectionExtensions.RegisterSecureConnection(certificate);
-
-            Uri[] listenEndPoints = {
+            WebSocketListener server = new WebSocketListener(new Uri[]
+            {
                 new Uri(WsDaemon)
-            };
-
-            WebSocketListener server = new WebSocketListener(listenEndPoints, options);
+            }, options);
 
             server.StartAsync().Wait(cancellation.Token);
 
@@ -83,13 +81,6 @@ namespace p7ss_server.Classes
                     {
                         string clientIp = webSocket.HttpRequest.Headers["CF-Connecting-IP"];
 
-                        //using (WebSocketMessageWriteStream messageWriter = webSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                        //using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
-                        //{
-                        //    await sw.WriteAsync(JsonConvert.SerializeObject((int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds, SerializerSettings));
-                        //    await sw.FlushAsync();
-                        //}
-
 #pragma warning disable 4014
                         EchoAllIncomingMessagesAsync(webSocket, clientIp, cancellation);
 #pragma warning restore 4014
@@ -98,6 +89,10 @@ namespace p7ss_server.Classes
                 catch (OperationCanceledException)
                 {
                     break;
+                }
+                catch (WebSocketException)
+                {
+                    // nothing
                 }
                 catch (AggregateException)
                 {
@@ -109,7 +104,7 @@ namespace p7ss_server.Classes
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("An error occurred while accepting client: " + e);
+                    Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] An error occurred while accepting client: " + e);
                 }
             }
         }
@@ -117,13 +112,11 @@ namespace p7ss_server.Classes
         private static async Task EchoAllIncomingMessagesAsync(WebSocket webSocket, string clientIp, CancellationToken cancellation)
         {
             SocketsList thisAuthSocket = null;
-
             try
             {
                 while (webSocket.IsConnected && !cancellation.IsCancellationRequested)
                 {
                     WebSocketMessageReadStream messageRead = await webSocket.ReadMessageAsync(cancellation);
-
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
                     {
                         string request = await new StreamReader(messageRead, Utf8NoBom).ReadToEndAsync();
