@@ -101,57 +101,44 @@ namespace p7ss_client.Classes.WebSockets
         internal static JObject Send(int num, object data)
         {
             JObject result = null;
-            while (true)
+
+            try
             {
-                try
-                {
-                    RemoteSocket.WriteStringAsync(JsonConvert.SerializeObject(data, SerializerSettings), _cancellation.Token).Wait(_cancellation.Token);
+                RemoteSocket.WriteStringAsync(JsonConvert.SerializeObject(data, SerializerSettings), _cancellation.Token).Wait(_cancellation.Token);
 
-                    for (int i = 0; i < 25; i++)
+                for (int i = 0; i < 25; i++)
+                {
+                    Thread.Sleep(200);
+
+                    List<KeyValuePair<int, JObject>> search = Requests.Where(x => x.Key == num).ToList();
+                    if (search.Count > 0)
                     {
-                        Thread.Sleep(200);
+                        Requests.Remove(search.Last().Key);
 
-                        List<KeyValuePair<int, JObject>> search = Requests.Where(x => x.Key == num).ToList();
-                        if (search.Count > 0)
-                        {
-                            Requests.Remove(search.Last().Key);
-
-                            result = search.Last().Value;
-
-                            break;
-                        }
+                        return search.Last().Value;
                     }
-
-                    break;
-
-                    //if (string.IsNullOrEmpty(data))
-                    //{
-                    //    RemoteWsDaemon.Abort();
-
-                    //    RemoteWsDaemon = new Thread(Open)
-                    //    {
-                    //        IsBackground = true
-                    //    };
-
-                    //    RemoteWsDaemon.Start();
-
-                    //    CheckRemoteSocket();
-
-                    //    continue;
-                    //}
-
-                    //break;
                 }
-                catch (AggregateException)
+
+                RemoteWsDaemon = null;
+
+                RemoteWsDaemon = new Thread(Open)
                 {
-                    //Thread.Sleep(3000);
-                }
-                catch (Exception e)
-                {
-                    RemoteSocket = null;
+                    IsBackground = true
+                };
 
-                    Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'WebSocket': " + e);
-                }
+                RemoteWsDaemon.Start();
+
+                CheckRemoteSocket();
+            }
+            catch (AggregateException)
+            {
+                Thread.Sleep(3000);
+            }
+            catch (Exception e)
+            {
+                RemoteSocket = null;
+
+                Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'WebSocket': " + e);
             }
 
             return result;

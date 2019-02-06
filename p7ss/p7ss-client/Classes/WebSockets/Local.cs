@@ -207,7 +207,6 @@ namespace p7ss_client.Classes.WebSockets
                                                         case "logOut":
                                                             UserData = null;
                                                             RemoteWsDaemon = null;
-                                                            _localSocket = null;
 
                                                             UpdateSettings(new JObject());
 
@@ -282,6 +281,8 @@ namespace p7ss_client.Classes.WebSockets
                                         if ((string)json["method"] == "auth.logOut")
                                         {
                                             await _localSocket.CloseAsync();
+
+                                            _localSocket = null;
                                         }
                                     }
                                 }

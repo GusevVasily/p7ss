@@ -22,7 +22,7 @@ namespace p7ss_client
                 {
                     if (!Remote.RemoteSocket.IsConnected)
                     {
-                        RemoteWsDaemon.Abort();
+                        RemoteWsDaemon = null;
 
                         RemoteWsDaemon = new Thread(Remote.Open)
                         {
