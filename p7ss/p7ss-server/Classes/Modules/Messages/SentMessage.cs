@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace p7ss_server.Classes.Modules.Messages
 {
-    internal class SendMessage : Core
+    internal class SentMessage : Core
     {
         internal static object Execute(SocketsList thisAuthSocket, int requestId, JToken data)
         {
@@ -25,7 +25,7 @@ namespace p7ss_server.Classes.Modules.Messages
                 && data["message"].ToString().Length > 1
             )
             {
-                SendMessageBody dataObject = new SendMessageBody
+                SentMessageBody dataObject = new SentMessageBody
                 {
                     Peer = (int) data["peer"],
                     Message = (string) data["message"]
@@ -47,11 +47,12 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect1.ConnectionString = builder.ConnectionString;
                     connect1.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect1);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users`, `hash` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect1);
                     MySqlDataReader reader1 = command.ExecuteReader();
                     string fileName = DateTime.Now.ToString("yyyyMMdd") + ".dat",
                         historyJson = null,
-                        type = "users";
+                        type = "users",
+                        hash = null;
                     int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds,
                         recipient = 0,
                         messageId = 1,
@@ -62,6 +63,7 @@ namespace p7ss_server.Classes.Modules.Messages
                         {
                             imDir = reader1.GetInt32(0);
                             type = reader1.GetString(1);
+                            hash = reader1.GetString(3);
 
                             switch (type)
                             {
@@ -118,8 +120,9 @@ namespace p7ss_server.Classes.Modules.Messages
 
                             string users = "|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|";
                             recipient = dataObject.Peer;
+                            hash = GenerateSession(thisAuthSocket.UserId + "<||>" + requestId + "<||>" + dataObject.Peer, false);
 
-                            MainDbSend("INSERT INTO `im` (`type`, `users`, `time_add`, `time_update`) VALUES ('" + type + "', '" + users + "', '" + time + "', '" + time + "')");
+                            MainDbSend("INSERT INTO `im` (`type`, `users`, `hash`, `time_add`, `time_update`) VALUES ('" + type + "', '" + users + "', '" + hash + "', '" + time + "', '" + time + "')");
                             reader2.Close();
 
                             command = new MySqlCommand("SELECT `id` FROM `im` WHERE `users` = '" + users + "'", connect2);
@@ -139,8 +142,19 @@ namespace p7ss_server.Classes.Modules.Messages
                     {
                         Id = messageId,
                         Sender = thisAuthSocket.UserId,
-                        Text = dataObject.Message,
-                        Date = time,
+                        Data = Cryptography.EnCrypt(
+                            JsonConvert.SerializeObject(
+                                new MessageParamsEncrypt
+                                {
+                                    Id = messageId,
+                                    Message = dataObject.Message,
+                                    Date = time
+                                },
+                                SerializerSettings
+                            ),
+                            hash,
+                            true
+                        ),
                         Hide = new JArray()
                     };
 
@@ -176,10 +190,15 @@ namespace p7ss_server.Classes.Modules.Messages
                     {
                         Result = true,
                         Id = requestId,
-                        Response = new ResponseSendMessageWs
+                        Response = new ResponseSentMessageWs
                         {
                             Recipient = recipient,
-                            Body = newMessage
+                            Body = new MessageParamsEncrypt
+                            {
+                                Id = messageId,
+                                Message = dataObject.Message,
+                                Date = time
+                            }
                         }
                     };
                 }
@@ -193,30 +212,36 @@ namespace p7ss_server.Classes.Modules.Messages
         }
     }
 
-    class SendMessageBody
+    class SentMessageBody
     {
         public int Peer;
         public string Message;
     }
 
-    internal class MessageParamsAdd
+    class MessageParamsAdd
     {
         public int Id;
         public int Sender;
-        public string Text;
-        public int Date;
+        public string Data;
         public JArray Hide;
     }
 
-    internal class ResponseSendMessage
+    class MessageParamsEncrypt
+    {
+        public int Id;
+        public string Message;
+        public int Date;
+    }
+
+    internal class ResponseSentMessage
     {
         public int Id;
         public int Date;
     }
 
-    internal class ResponseSendMessageWs
+    internal class ResponseSentMessageWs
     {
         public int Recipient;
-        public MessageParamsAdd Body;
+        public MessageParamsEncrypt Body;
     }
 }

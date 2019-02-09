@@ -28,14 +28,7 @@ namespace p7ss_client
                 {
                     if (!Remote.RemoteSocket.IsConnected)
                     {
-                        RemoteWsDaemon = null;
-
-                        RemoteWsDaemon = new Thread(Remote.Open)
-                        {
-                            IsBackground = true
-                        };
-
-                        RemoteWsDaemon.Start();
+                        RemoteWsDaemonThread = null;
 
                         CheckRemoteSocket();
                     }

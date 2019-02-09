@@ -64,11 +64,10 @@ namespace p7ss_client.Classes.WebSockets
 
             if (port != 0)
             {
-                Uri[] listenEndPoints = {
+                WebSocketListener localServer = new WebSocketListener(new []
+                {
                     new Uri(LocalWsDaemonUrl + port)
-                };
-
-                WebSocketListener localServer = new WebSocketListener(listenEndPoints, options);
+                }, options);
 
                 localServer.StartAsync().Wait(cancellation.Token);
 
@@ -113,10 +112,12 @@ namespace p7ss_client.Classes.WebSockets
                                 };
 
                                 using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                                using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                 {
-                                    await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
-                                    await sw.FlushAsync();
+                                    using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                                    {
+                                        await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
+                                        await sw.FlushAsync();
+                                    }
                                 }
 
                                 await _localSocket.CloseAsync();
@@ -135,10 +136,12 @@ namespace p7ss_client.Classes.WebSockets
                         };
 
                         using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                         {
-                            await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
-                            await sw.FlushAsync();
+                            using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                            {
+                                await sw.WriteAsync(JsonConvert.SerializeObject(localUserData, SerializerSettings));
+                                await sw.FlushAsync();
+                            }
                         }
 
 #pragma warning disable 4014
@@ -205,10 +208,10 @@ namespace p7ss_client.Classes.WebSockets
                                                     switch (method[1])
                                                     {
                                                         case "logOut":
-                                                            UserData = null;
-                                                            RemoteWsDaemon = null;
+                                                            UserData = new UserData();
+                                                            RemoteWsDaemonThread = null;
 
-                                                            UpdateSettings(new JObject());
+                                                            UpdateSettings();
 
                                                             break;
 
@@ -226,9 +229,19 @@ namespace p7ss_client.Classes.WebSockets
                                                             {
                                                                 User_id = (int) response["response"]["user_id"],
                                                                 Session = (string) response["response"]["session"],
+                                                                Hash = GenerateSession((string)response["response"]["session"]),
                                                                 Name = (string) response["response"]["name"],
                                                                 Avatar = (string) response["response"]["avatar"],
                                                                 Status = (string) response["response"]["status"]
+                                                            };
+
+                                                            UserData userData = new UserData
+                                                            {
+                                                                User_id = (int)response["response"]["user_id"],
+                                                                Session = (string)response["response"]["session"],
+                                                                Name = (string)response["response"]["name"],
+                                                                Avatar = (string)response["response"]["avatar"],
+                                                                Status = (string)response["response"]["status"]
                                                             };
 
                                                             if (!Directory.Exists("data"))
@@ -236,7 +249,7 @@ namespace p7ss_client.Classes.WebSockets
                                                                 Directory.CreateDirectory("data");
                                                             }
 
-                                                            UpdateSettings(UserData);
+                                                            UpdateSettings(userData);
 
                                                             localResponse.Data = new ResponseLocal
                                                             {
@@ -272,13 +285,20 @@ namespace p7ss_client.Classes.WebSockets
                                         }
 
                                         using (WebSocketMessageWriteStream messageWriter = _localSocket.CreateMessageWriter(WebSocketMessageType.Text))
-                                        using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
                                         {
-                                            await sw.WriteAsync(JsonConvert.SerializeObject(localResponse, SerializerSettings));
-                                            await sw.FlushAsync();
+                                            using (StreamWriter sw = new StreamWriter(messageWriter, Utf8NoBom))
+                                            {
+                                                await sw.WriteAsync(
+                                                    JsonConvert.SerializeObject(
+                                                        localResponse,
+                                                        SerializerSettings
+                                                    )
+                                                );
+                                                await sw.FlushAsync();
+                                            }
                                         }
 
-                                        if ((string)json["method"] == "auth.logOut")
+                                        if ((string) json["method"] == "auth.logOut")
                                         {
                                             await _localSocket.CloseAsync();
 
@@ -319,7 +339,7 @@ namespace p7ss_client.Classes.WebSockets
             }
         }
 
-        internal static async void SendAllMessage(string message)
+        internal static async void SendMessage(string message)
         {
             try
             {

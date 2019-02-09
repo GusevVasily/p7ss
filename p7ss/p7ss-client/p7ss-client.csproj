@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\Cryptography.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="Core.cs" />
     <Compile Include="Program.cs" />

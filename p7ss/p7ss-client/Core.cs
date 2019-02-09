@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Ionic.Zip;
@@ -21,10 +22,28 @@ namespace p7ss_client
             NullValueHandling = NullValueHandling.Ignore
         };
 
-        internal static UserData UserData;
-        internal static Thread RemoteWsDaemon;
+        internal static UserData UserData = new UserData();
+        internal static Thread RemoteWsDaemonThread;
 
-        internal static void UpdateSettings(object data)
+        internal static string GenerateSession(string str)
+        {
+            string hash;
+
+            using (SHA256Managed sha256 = new SHA256Managed())
+            {
+                hash = BitConverter.ToString(
+                    sha256.ComputeHash(
+                        Encoding.UTF8.GetBytes(
+                            str
+                        )
+                    )
+                ).Replace("-", "").ToLower();
+            }
+
+            return hash;
+        }
+
+        internal static void UpdateSettings(object data = null)
         {
             while (true)
             {
@@ -32,7 +51,7 @@ namespace p7ss_client
                 {
                     using (StreamWriter sw = new StreamWriter("data/settings.dat"))
                     {
-                        sw.Write(JsonConvert.SerializeObject(data, SerializerSettings));
+                        sw.Write(JsonConvert.SerializeObject(data ?? new JObject(), SerializerSettings));
                     }
 
                     break;
@@ -46,16 +65,14 @@ namespace p7ss_client
 
         internal static ResponseLocal CheckRemoteSocket()
         {
-            ResponseLocal localUserData;
-            if (RemoteWsDaemon == null)
+            if (RemoteWsDaemonThread == null)
             {
-                RemoteWsDaemon = new Thread(Remote.Open)
+                RemoteWsDaemonThread = new Thread(Remote.Open)
                 {
                     IsBackground = true
                 };
 
-                RemoteWsDaemon.Start();
-
+                RemoteWsDaemonThread.Start();
                 Thread.Sleep(1000);
 
                 if (Directory.Exists("data"))
@@ -88,9 +105,19 @@ namespace p7ss_client
 
                                 if (settingsJson != null)
                                 {
-                                    if ((bool)settingsJson["result"])
+                                    if ((bool) settingsJson["result"])
                                     {
                                         UserData = new UserData
+                                        {
+                                            User_id = (int) settingsJson["response"]["user_id"],
+                                            Session = (string) settingsJson["response"]["session"],
+                                            Hash = GenerateSession((string) settingsJson["response"]["session"]),
+                                            Name = (string) settingsJson["response"]["name"],
+                                            Avatar = (string) settingsJson["response"]["avatar"],
+                                            Status = (string) settingsJson["response"]["status"]
+                                        };
+
+                                        UserData userData = new UserData
                                         {
                                             User_id = (int) settingsJson["response"]["user_id"],
                                             Session = (string) settingsJson["response"]["session"],
@@ -99,7 +126,9 @@ namespace p7ss_client
                                             Status = (string) settingsJson["response"]["status"]
                                         };
 
-                                        localUserData = new ResponseLocal
+                                        UpdateSettings(userData);
+
+                                        return new ResponseLocal
                                         {
                                             Module = "main",
                                             Data = new UserData
@@ -110,10 +139,6 @@ namespace p7ss_client
                                                 Status = (string) settingsJson["response"]["status"]
                                             }
                                         };
-
-                                        UpdateSettings(UserData);
-
-                                        return localUserData;
                                     }
                                 }
                             }
@@ -126,61 +151,26 @@ namespace p7ss_client
                 {
                     Directory.CreateDirectory("data");
                 }
-
-                UpdateSettings(new JObject());
             }
             else
             {
-                if (UserData != null)
+                if (UserData.Session != null)
                 {
-                    JObject settingsJson = Remote.Send(
-                        new Random((int) DateTime.Now.Ticks).Next(),
-                        new RemoteSend
-                        {
-                            Method = "auth.importAuthorization",
-                            Id = new Random((int) DateTime.Now.Ticks).Next(),
-                            Params = new ImportAuthorization
-                            {
-                                Id = UserData.User_id,
-                                Session = UserData.Session
-                            }
-                        }
-                    );
-
-                    if (settingsJson != null)
+                    return new ResponseLocal
                     {
-                        if ((bool)settingsJson["result"])
+                        Module = "main",
+                        Data = new UserData
                         {
-                            UserData = new UserData
-                            {
-                                User_id = (int) settingsJson["response"]["user_id"],
-                                Session = (string) settingsJson["response"]["session"],
-                                Name = (string) settingsJson["response"]["name"],
-                                Avatar = (string) settingsJson["response"]["avatar"],
-                                Status = (string) settingsJson["response"]["status"]
-                            };
-
-                            localUserData = new ResponseLocal
-                            {
-                                Module = "main",
-                                Data = new UserData
-                                {
-                                    User_id = (int) settingsJson["response"]["user_id"],
-                                    Name = (string) settingsJson["response"]["name"],
-                                    Avatar = (string) settingsJson["response"]["avatar"],
-                                    Status = (string) settingsJson["response"]["status"]
-                                }
-                            };
-
-                            UpdateSettings(UserData);
-
-                            return localUserData;
+                            User_id = UserData.User_id,
+                            Name = UserData.Name,
+                            Avatar = UserData.Avatar,
+                            Status = UserData.Status
                         }
-                    }
+                    };
                 }
             }
 
-            UpdateSettings(new JObject());
+            UpdateSettings();
 
             return null;
         }
@@ -216,7 +206,7 @@ namespace p7ss_client
                 {
                     if (Directory.Exists("data/update"))
                     {
-                        Directory.Delete("data/update");
+                        Directory.Delete("data/update", true);
                     }
                 }
 
@@ -241,6 +231,7 @@ namespace p7ss_client
     {
         public int User_id;
         public string Session;
+        public string Hash;
         public string Name;
         public string Avatar;
         public string Status;

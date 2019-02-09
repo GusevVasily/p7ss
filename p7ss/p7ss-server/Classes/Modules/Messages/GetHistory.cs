@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using MySql.Data.MySqlClient;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using p7ss_server.Configs;
 
@@ -46,13 +47,14 @@ namespace p7ss_server.Classes.Modules.Messages
                     connect.ConnectionString = builder.ConnectionString;
                     connect.Open();
 
-                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect);
+                    MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `hash` FROM `im` WHERE `users` = '|" + thisAuthSocket.UserId + "|" + dataObject.Peer + "|' OR `users` = '|" + dataObject.Peer + "|" + thisAuthSocket.UserId + "|'", connect);
                     MySqlDataReader reader = command.ExecuteReader();
                     if (reader.HasRows)
                     {
                         while (reader.Read())
                         {
-                            List<MessageParamsAdd> messages = new List<MessageParamsAdd>();
+                            string hash = reader.GetString(2);
+                            List<ResponseMessageObject> messages = new List<ResponseMessageObject>();
                             DirectoryInfo dir = new DirectoryInfo(Params.MessagesDir + reader.GetString(1) + "/" + reader.GetInt32(0));
                             int residue = 0;
                             foreach (var file in dir.GetFiles().OrderByDescending(x => x.FullName))
@@ -77,15 +79,28 @@ namespace p7ss_server.Classes.Modules.Messages
                                     {
                                         if (dataObject.Limit > 0)
                                         {
-                                            messages.Add(new MessageParamsAdd
+                                            bool delete = false;
+                                            foreach (var current in messagesInFile[i]["hide"])
                                             {
-                                                Id = (int)messagesInFile[i]["id"],
-                                                Sender = (int)messagesInFile[i]["sender"],
-                                                Text = (string)messagesInFile[i]["text"],
-                                                Date = (int)messagesInFile[i]["date"],
-                                            });
+                                                if ((int) current == thisAuthSocket.UserId)
+                                                {
+                                                    delete = true;
+                                                }
+                                            }
 
-                                            dataObject.Limit--;
+                                            if (!delete)
+                                            {
+                                                JObject message = JObject.Parse(Cryptography.DeCrypt((string) messagesInFile[i]["data"], hash, true));
+                                                messages.Add(new ResponseMessageObject
+                                                {
+                                                    Sender = (int) messagesInFile[i]["sender"],
+                                                    Id = (int) message["id"],
+                                                    Message = (string) message["message"],
+                                                    Date = (int)message["date"]
+                                                });
+
+                                                dataObject.Limit--;
+                                            }
                                         }
                                     }
                                 }
@@ -121,5 +136,13 @@ namespace p7ss_server.Classes.Modules.Messages
         public int Peer;
         public int Offset;
         public int Limit;
+    }
+
+    class ResponseMessageObject
+    {
+        public int Sender;
+        public int Id;
+        public string Message;
+        public int Date;
     }
 }

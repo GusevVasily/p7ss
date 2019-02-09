@@ -50,7 +50,8 @@ namespace p7ss_server.Classes.Modules.Auth
                         while (reader.Read())
                         {
                             int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
-                            string session = GenerateSession(reader.GetString(0));
+                            string session = GenerateSession(reader.GetString(0), true),
+                                hash = GenerateSession(session, false);
 
                             MainDbSend("UPDATE `users` SET " +
                                "`ip` = '" + clientIp + "'," +
@@ -59,7 +60,6 @@ namespace p7ss_server.Classes.Modules.Auth
                                "WHERE `id` = '" + dataObject.Id + "'");
 
                             List<SocketsList> oldSocket = Ws.AuthSockets.Where(x => x.UserId == dataObject.Id).ToList();
-
                             if (oldSocket.Count > 0)
                             {
                                 Ws.AuthSockets.Remove(oldSocket.Last());
@@ -70,6 +70,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                 UserId = dataObject.Id,
                                 Ip = clientIp,
                                 Session = session,
+                                Hash = hash,
                                 Ws = socket
                             });
 
@@ -81,6 +82,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                 {
                                     User_id = dataObject.Id,
                                     Session = session,
+                                    Hash = GenerateSession(session, false),
                                     Name = reader.GetString(1),
                                     Avatar = reader.GetString(2),
                                     Status = reader.GetString(3)
@@ -115,6 +117,7 @@ namespace p7ss_server.Classes.Modules.Auth
     {
         public int User_id;
         public string Session;
+        public string Hash;
         public string Name;
         public string Avatar;
         public string Status;

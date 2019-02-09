@@ -76,17 +76,33 @@ namespace p7ss_client.Classes.WebSockets
                     if (messageRead != null && messageRead.MessageType == WebSocketMessageType.Text)
                     {
                         string message = await new StreamReader(messageRead, Utf8NoBom).ReadToEndAsync();
-                        Console.WriteLine("response: " + message); // debug
                         if (!string.IsNullOrEmpty(message))
                         {
-                            JObject json = JObject.Parse(message);
-                            if (!string.IsNullOrEmpty((string)json["result"]))
+                            bool encrypted = true;
+                            while (true)
                             {
-                                Requests.Add((int)json["id"], json);
-                            }
-                            else if (!string.IsNullOrEmpty((string)json["module"]))
-                            {
-                                Local.SendAllMessage(message);
+                                try
+                                {
+                                    JObject json = JObject.Parse(encrypted ? Cryptography.DeCrypt(message, UserData.Hash) : message);
+                                    if (!string.IsNullOrEmpty((string)json["result"]))
+                                    {
+                                        Requests.Add((int)json["id"], json);
+                                    }
+                                    else if (!string.IsNullOrEmpty((string)json["module"]))
+                                    {
+                                        Local.SendMessage(json.ToString());
+                                    }
+                                    else if (!string.IsNullOrEmpty((string)json["hash"]))
+                                    {
+                                        UserData.Hash = (string)json["hash"];
+                                    }
+
+                                    break;
+                                }
+                                catch (ArgumentNullException)
+                                {
+                                    encrypted = false;
+                                }
                             }
                         }
                     }
@@ -100,48 +116,47 @@ namespace p7ss_client.Classes.WebSockets
 
         internal static JObject Send(int num, object data)
         {
-            JObject result = null;
-
-            try
+            int attempts = 0;
+            while (true)
             {
-                RemoteSocket.WriteStringAsync(JsonConvert.SerializeObject(data, SerializerSettings), _cancellation.Token).Wait(_cancellation.Token);
-
-                for (int i = 0; i < 25; i++)
+                try
                 {
-                    Thread.Sleep(200);
+                    RemoteSocket.WriteStringAsync(
+                        Cryptography.EnCrypt(
+                            JsonConvert.SerializeObject(
+                                data,
+                                SerializerSettings
+                            ),
+                            UserData.Hash
+                        )
+                    ).Wait(_cancellation.Token);
 
-                    List<KeyValuePair<int, JObject>> search = Requests.Where(x => x.Key == num).ToList();
-                    if (search.Count > 0)
+                    for (int i = 0; i < 50; i++)
                     {
-                        Requests.Remove(search.Last().Key);
+                        Thread.Sleep(200);
 
-                        return search.Last().Value;
+                        List<KeyValuePair<int, JObject>> search = Requests.Where(x => x.Key == num).ToList();
+                        if (search.Count > 0)
+                        {
+                            Requests.Remove(search.Last().Key);
+
+                            return search.Last().Value;
+                        }
                     }
                 }
+                catch (AggregateException) { }
 
-                RemoteWsDaemon = null;
-
-                RemoteWsDaemon = new Thread(Open)
-                {
-                    IsBackground = true
-                };
-
-                RemoteWsDaemon.Start();
+                RemoteWsDaemonThread = null;
 
                 CheckRemoteSocket();
-            }
-            catch (AggregateException)
-            {
                 Thread.Sleep(3000);
-            }
-            catch (Exception e)
-            {
-                RemoteSocket = null;
 
-                Console.WriteLine("[" + DateTime.Now.ToLongTimeString() + "] Exception, class 'WebSocket': " + e);
+                attempts++;
+                if (attempts == 5)
+                {
+                    return null;
+                }
             }
-
-            return result;
         }
     }
 

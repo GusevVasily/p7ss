@@ -20,19 +20,35 @@ namespace p7ss_server
             NullValueHandling = NullValueHandling.Ignore
         };
 
-        internal static string GenerateSession(string login)
+        internal static string GenerateSession(string str, bool auth)
         {
             string hash;
 
-            using (SHA512Managed sha512 = new SHA512Managed())
+            if (auth)
             {
-                hash = BitConverter.ToString(
-                    sha512.ComputeHash(
-                        Encoding.UTF8.GetBytes(
-                            "p7ss://" + login + "/" + new Random((int) DateTime.Now.Ticks).Next().ToString()
+                using (SHA512Managed sha512 = new SHA512Managed())
+                {
+                    hash = BitConverter.ToString(
+                        sha512.ComputeHash(
+                            Encoding.UTF8.GetBytes(
+                                "p7ss://" + str + "/" + new Random((int)DateTime.Now.Ticks).Next()
+                            )
                         )
-                    )
-                ).Replace("-", "").ToLower();
+                    ).Replace("-", "").ToLower();
+                }
+            }
+            else
+            {
+                using (SHA256Managed sha256 = new SHA256Managed())
+                {
+                    hash = BitConverter.ToString(
+                        sha256.ComputeHash(
+                            Encoding.UTF8.GetBytes(
+                                str
+                            )
+                        )
+                    ).Replace("-", "").ToLower();
+                }
             }
 
             return hash;

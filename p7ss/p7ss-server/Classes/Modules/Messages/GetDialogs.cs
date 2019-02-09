@@ -44,7 +44,7 @@ namespace p7ss_server.Classes.Modules.Messages
                 connect1.ConnectionString = builder.ConnectionString;
                 connect1.Open();
 
-                MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users` FROM `im` WHERE `users` LIKE '%|" + thisAuthSocket.UserId + "|%' ORDER BY `time_update` DESC LIMIT " + dataObject.Offset + ", " + dataObject.Limit, connect1);
+                MySqlCommand command = new MySqlCommand("SELECT `id`, `type`, `users`, `hash` FROM `im` WHERE `users` LIKE '%|" + thisAuthSocket.UserId + "|%' ORDER BY `time_update` DESC LIMIT " + dataObject.Offset + ", " + dataObject.Limit, connect1);
                 MySqlDataReader reader1 = command.ExecuteReader();
                 List<ResponseGetDialogs> dialogs = new List<ResponseGetDialogs>();
                 while (reader1.Read())
@@ -110,9 +110,11 @@ namespace p7ss_server.Classes.Modules.Messages
 
                                             if (!delete)
                                             {
-                                                string message = (string) json[i]["text"];
-                                                peer.Message = message.Length > 25 ? message.Remove(message.Length - (message.Length - 25)) + "..." : message;
-                                                peer.Date = (int) json[i]["date"];
+                                                JObject messageObject = JObject.Parse(Cryptography.DeCrypt((string) json[i]["data"], reader1.GetString(3), true));
+                                                peer.Message = messageObject["message"].ToString().Length > 25
+                                                    ? messageObject["message"].ToString().Remove(messageObject["message"].ToString().Length - (messageObject["message"].ToString().Length - 25)) + "..."
+                                                    : (string) messageObject["message"];
+                                                peer.Date = (int)messageObject["date"];
                                             }
                                         }
                                         else

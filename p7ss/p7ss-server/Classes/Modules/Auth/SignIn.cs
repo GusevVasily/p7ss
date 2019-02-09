@@ -54,19 +54,20 @@ namespace p7ss_server.Classes.Modules.Auth
                             if (tfa.VerifyCode(reader.GetString(4), dataObject.TfaCode))
                             {
                                 int time = (int) (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
-                                string session = GenerateSession(dataObject.Login);
+                                string session = GenerateSession(dataObject.Login, true),
+                                    hash = GenerateSession(session, false);
 
                                 MainDbSend("UPDATE `users` SET " +
                                            "`ip` = '" + clientIp + "'," +
                                            "`session` = '" + session + "'," +
                                            "`time_auth` = '" + time + "' " +
                                            "WHERE `login` = '" + dataObject.Login + "'");
-
                                 Ws.AuthSockets.Add(new SocketsList
                                 {
                                     UserId = reader.GetInt32(0),
                                     Ip = clientIp,
                                     Session = session,
+                                    Hash = hash,
                                     Ws = socket
                                 });
 
@@ -78,6 +79,7 @@ namespace p7ss_server.Classes.Modules.Auth
                                     {
                                         User_id = reader.GetInt32(0),
                                         Session = session,
+                                        Hash = hash,
                                         Name = reader.GetString(1),
                                         Avatar = reader.GetString(2),
                                         Status = reader.GetString(3)
