@@ -211,6 +211,9 @@ namespace p7ss_client.Classes.WebSockets
                                                             UserData = new UserData();
                                                             RemoteWsDaemonThread = null;
 
+                                                            Directory.Delete("data/", true);
+                                                            Directory.CreateDirectory("data/");
+
                                                             UpdateSettings();
 
                                                             break;

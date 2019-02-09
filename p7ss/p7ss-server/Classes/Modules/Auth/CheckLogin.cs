@@ -29,7 +29,6 @@ namespace p7ss_server.Classes.Modules.Auth
                 {
                     string login = dataObject.Login.ToLower();
                     string symbols = "abcdefghijklmnopqrstuvwxyz01234567890_";
-
                     for (var i = 0; i < login.Length; i++)
                     {
                         if (symbols.IndexOf(login[i]) == -1)
